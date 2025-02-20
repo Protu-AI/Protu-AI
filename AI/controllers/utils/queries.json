@@ -1,0 +1,7 @@
+{
+    "get_last_message_id": "SELECT \"id\", \"content\" FROM \"messages\" WHERE \"chatId\" = %s AND \"senderRole\" = 'user' ORDER BY \"createdAt\" DESC LIMIT 1;"
+    ,
+    "get_attached_file": "SELECT \"filePath\", \"fileType\" FROM \"attachments\" WHERE \"messageId\" = %s;"
+    ,
+    "get_all_messages": "SELECT \"senderRole\", \"content\" FROM \"messages\" WHERE \"chatId\" = %s ORDER BY \"createdAt\" ASC;"
+}
