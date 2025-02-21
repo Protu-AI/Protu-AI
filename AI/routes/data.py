@@ -8,7 +8,6 @@ from stores.vectordb import VectorDBFactoryProvider
 
 from controllers import DataController, BaseController, NLPController, DBController
 
-from langchain_chroma.vectorstores import Chroma
 from controllers.Enums import ResponseSignal
 
 import logging
@@ -40,8 +39,8 @@ async def process_end(request: Request, process_request: ProcessRequest):
         return JSONResponse(
             content={
                 "message": ResponseSignal.LLM_GENERATION_SUCCESS.value,
-                "prompt": full_prompt,
-                "chat_history": chat_history,
+                # "prompt": full_prompt,
+                # "chat_history": chat_history,
                 "answer": answer
             }
         )
