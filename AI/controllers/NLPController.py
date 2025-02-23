@@ -134,14 +134,23 @@ class NLPController(BaseController):
 
         summary = llm.invoke(combined_messages)
 
+        if len(all_messages) == 1:
+            return '', last_prompt
         return summary.content, last_prompt
 
     def answer_rag_question(self, chat_id: str, limit: int = 10):
 
-        full_prompt, chat_history, answer = None, None, None
+        full_prompt, chat_history, answer, documents_prompt = None, None, None, ''
 
         memory_summary, query = self.get_memory_summary_and_query(
             chat_id=chat_id)
+
+        collection_name = self.create_collection_name(chat_id=chat_id)
+
+        _ = self.vectordb_client.create_collection(
+            collection_name=collection_name,
+            embedding_dim=self.embedding_model.embedding_size
+        )
 
         retrieved_documents = self.search_vector_db_collection(
             chat_id=chat_id,
@@ -149,21 +158,22 @@ class NLPController(BaseController):
             limit=limit
         )
 
-        if not retrieved_documents or len(retrieved_documents) == 0:
-            return full_prompt, chat_history, answer
+        # if not retrieved_documents or len(retrieved_documents) == 0:
+        #     return full_prompt, chat_history, answer
 
         system_prompt = Prompt.system_prompt
 
-        documents_prompt = '\n'.join(
-            [
-                Prompt.document_prompt.substitute(
-                    doc_num=idx,
-                    doc_content=self.generation_model.process_text(doc.text),
-                    doc_metadata=doc.metadata
-                )
-                for idx, doc in enumerate(retrieved_documents, 1)
-            ]
-        )
+        if retrieved_documents:
+            documents_prompt = '\n'.join(
+                [
+                    Prompt.document_prompt.substitute(
+                        doc_num=idx,
+                        doc_content=self.generation_model.process_text(doc.text),
+                        doc_metadata=doc.metadata
+                    )
+                    for idx, doc in enumerate(retrieved_documents, 1)
+                ]
+            )
 
         memory_prompt = Prompt.memory_prompt.substitute(
             conversation_history=memory_summary
