@@ -1,6 +1,6 @@
 FROM openjdk:17-jdk-alpine AS build
 
-WORKDIR /app
+WORKDIR /user-service
 
 COPY mvnw pom.xml ./
 COPY .mvn ./.mvn
@@ -13,8 +13,8 @@ RUN ./mvnw package -DskipTests -T 1C
 
 FROM openjdk:17-jdk-alpine
 
-WORKDIR /app
+WORKDIR /user-service
 
-COPY --from=build /app/target/*.jar app.jar
+COPY --from=build user-service/target/*.jar app.jar
 
 ENTRYPOINT ["java", "-jar", "app.jar"]
