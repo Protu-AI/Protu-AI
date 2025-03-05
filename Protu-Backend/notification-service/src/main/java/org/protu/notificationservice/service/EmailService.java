@@ -1,12 +1,12 @@
 package org.protu.notificationservice.service;
 
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
+import lombok.RequiredArgsConstructor;
 import org.protu.notificationservice.dto.RabbitMQMessage;
 import org.protu.notificationservice.helper.TemplateProcessor;
 import org.protu.notificationservice.model.Template;
 import org.protu.notificationservice.repository.TemplateRepository;
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
-import lombok.RequiredArgsConstructor;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -28,6 +28,7 @@ public class EmailService {
         "otp_3", rabbitMQMessage.template().data().otp().charAt(2),
         "otp_4", rabbitMQMessage.template().data().otp().charAt(3),
         "otp_5", rabbitMQMessage.template().data().otp().charAt(4),
+        "otp_6", rabbitMQMessage.template().data().otp().charAt(5),
         "otpTtl", rabbitMQMessage.template().data().otpTtl());
     return templateProcessor.processTemplate(html, variables);
   }
@@ -45,7 +46,7 @@ public class EmailService {
 
   public void prepareAndSendEmail(RabbitMQMessage rabbitMQMessage) throws MessagingException {
     Template template = templateRepository.findById(rabbitMQMessage.template().id())
-        .orElseThrow( () -> new RuntimeException("Template not found!"));
+        .orElseThrow(() -> new RuntimeException("Template not found!"));
 
     String body = prepareEmailBody(rabbitMQMessage, template.getBody());
     sendEmail(rabbitMQMessage.to(), template.getSubject(), body);
