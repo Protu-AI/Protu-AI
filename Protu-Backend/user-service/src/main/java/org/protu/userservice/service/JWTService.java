@@ -18,12 +18,21 @@ public class JWTService {
   private final AppProperties properties;
   private final JWTHelper jwtHelper;
 
+<<<<<<< HEAD
   public String generateAccessToken(String userId) {
     return jwtHelper.generateToken(userId, properties.jwt().accessTokenTtL());
   }
 
   public String generateRefreshToken(String userId) {
     return jwtHelper.generateToken(userId, properties.jwt().refreshTokenTtL());
+=======
+  public String generateAccessToken(String userId, String userRoles) {
+    return jwtHelper.generateToken(userId, properties.jwt().accessTokenTtL(), userRoles);
+  }
+
+  public String generateRefreshToken(String userId, String userRoles) {
+    return jwtHelper.generateToken(userId, properties.jwt().refreshTokenTtL(), userRoles);
+>>>>>>> 6cd3ee0721992ead165375c463a438dca48f20c4
   }
 
   public String getAccessTokenDuration() {
@@ -44,6 +53,10 @@ public class JWTService {
 
   public String getUserIdFromToken(String token) {
     return jwtHelper.extractClaim(token, Claims::getSubject);
+  }
+
+  public String getUserRoles(String token) {
+    return jwtHelper.extractUserRoles(token);
   }
 
   private boolean isTokenExpired(String token) {

@@ -34,13 +34,22 @@ public class AuthService {
   private final RedisTemplate<Object, String> redisTemplate;
   private final OtpService otpService;
   private final AppProperties properties;
+<<<<<<< HEAD
+=======
+  private final String VERIFY_EMAIL = "email-verification";
+  private final String PASSWORD_RESET = "password-reset";
+>>>>>>> 6cd3ee0721992ead165375c463a438dca48f20c4
 
   public signUpResDto signUpUser(SignUpReqDto signUpReqDto) {
     userHelper.checkIfUserExists(signUpReqDto.email(), "email");
     userHelper.checkIfUserExists(signUpReqDto.username(), "username");
     User user = userMapper.toUserEntity(signUpReqDto, passwordEncoder);
     userRepo.save(user);
+<<<<<<< HEAD
     otpService.sendOtp(6, properties.otp().prefix().email() + user.getId(), user, properties.otp().emailTtl());
+=======
+    otpService.sendOtp(6, properties.otp().prefix().email() + user.getId(), user, properties.otp().emailTtl(), VERIFY_EMAIL);
+>>>>>>> 6cd3ee0721992ead165375c463a438dca48f20c4
     return new signUpResDto(user.getEmail(), true);
   }
 
@@ -57,7 +66,11 @@ public class AuthService {
   public ValidateIdentifierResDto validateUserIdentifier(String userIdentifier) {
     User user = userHelper.fetchUserOrThrow(userIdentifier, "username/email");
     if (!user.getIsEmailVerified()) {
+<<<<<<< HEAD
       otpService.sendOtp(6, properties.otp().prefix().email() + user.getId(), user, properties.otp().emailTtl());
+=======
+      otpService.sendOtp(6, properties.otp().prefix().email() + user.getId(), user, properties.otp().emailTtl(), VERIFY_EMAIL);
+>>>>>>> 6cd3ee0721992ead165375c463a438dca48f20c4
       throw new EmailNotVerifiedException(FailureMessages.EMAIL_NOT_VERIFIED.getMessage(userIdentifier));
     }
 
@@ -67,7 +80,11 @@ public class AuthService {
   public TokensResDto signIn(SignInReqDto signInReqDto) {
     User user = userHelper.fetchUserOrThrow(signInReqDto.userIdentifier(), "username/email");
     if (!user.getIsEmailVerified()) {
+<<<<<<< HEAD
       otpService.sendOtp(6, properties.otp().prefix().email() + user.getId(), user, properties.otp().emailTtl());
+=======
+      otpService.sendOtp(6, properties.otp().prefix().email() + user.getId(), user, properties.otp().emailTtl(), VERIFY_EMAIL);
+>>>>>>> 6cd3ee0721992ead165375c463a438dca48f20c4
       throw new EmailNotVerifiedException(FailureMessages.EMAIL_NOT_VERIFIED.getMessage(signInReqDto.userIdentifier()));
     }
     if (!passwordEncoder.matches(signInReqDto.password(), user.getPassword())) {
@@ -78,7 +95,8 @@ public class AuthService {
 
   public RefreshResDto refreshAccessToken(String refreshToken) {
     String authUserId = jwtService.getUserIdFromToken(refreshToken);
-    return tokenMapper.toTokensDto(authUserId, jwtService);
+    User user = userHelper.fetchUserByIdOrThrow(authUserId);
+    return tokenMapper.toTokensDto(authUserId, jwtService, user);
   }
 
   public void forgotPassword(SendOtpDto requestDto) {
@@ -86,7 +104,11 @@ public class AuthService {
     if (userOpt.isEmpty())
       return;
     User user = userOpt.get();
+<<<<<<< HEAD
     otpService.sendOtp(6, properties.otp().prefix().password() + user.getId(), user, properties.otp().passwordTtl());
+=======
+    otpService.sendOtp(6, properties.otp().prefix().password() + user.getId(), user, properties.otp().passwordTtl(), PASSWORD_RESET);
+>>>>>>> 6cd3ee0721992ead165375c463a438dca48f20c4
   }
 
   public void verifyResetPasswordOtp(VerifyResetPasswordOtpDto requestDto) {
