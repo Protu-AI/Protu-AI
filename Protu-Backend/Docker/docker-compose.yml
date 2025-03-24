@@ -123,28 +123,28 @@ services:
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq/
 
-    model-service:
-     container_name: model-service-container
-     build:
-       context: ../../AI
-       dockerfile: Dockerfile
-     image: protu-ai/model-service:v1.0.0
-     ports:
-       - "8000:8000"
-     env_file:
-       - ../../AI/.env
-     depends_on:
-       postgres:
-         condition: service_healthy
-     environment:
-       DB_HOST: postgres
-       DB_PORT: 5432
-       DB_NAME: protu-db
-       DB_USER: ${POSTGRES_USER}
-       DB_PASSWORD: ${POSTGRES_PASSWORD}
-     volumes:
-       - model-data:/app/data
-       - attachments:/app/uploads
+  model-service:
+    container_name: model-service-container
+    build:
+      context: ../../AI
+      dockerfile: Dockerfile
+    image: protu-ai/model-service:v1.0.0
+    ports:
+      - "8000:8000"
+    env_file:
+      - ../../AI/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: protu-db
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - model-data:/app/data
+      - attachments:/app/uploads
 
   service-discovery:
     container_name: service-discovery-container
