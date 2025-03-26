@@ -61,14 +61,13 @@ class GoogleProvider(LLMInterface):
         max_new_tokens = max_new_tokens if max_new_tokens else self.default_max_output_tokens
         temperature = temperature if temperature else self.default_temperature
 
-
         response = self.client.models.generate_content(
             model=self.generation_model_id,
             contents=chat_history,
-            config={
-                'max_output_tokens': max_new_tokens,
-                'temperature': temperature
-            }
+            # config={
+            #     'max_output_tokens': max_new_tokens,
+            #     'temperature': temperature
+            # }
         )
 
         if not response or not response.text:
