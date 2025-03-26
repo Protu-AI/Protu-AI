@@ -11,6 +11,9 @@ import os
 import Prompt
 
 from langchain_groq import ChatGroq
+from groq import Groq
+
+from time import sleep
 
 
 class NLPController(BaseController):
@@ -23,8 +26,6 @@ class NLPController(BaseController):
         self.vectordb_client = vectordb_client
         self.generation_model = generation_model
         self.embedding_model = embedding_model
-
-        os.environ['GROQ_API_KEY'] = self.app_settings.GROQ_API_KEY
 
     def get_file_and_store_into_vectordb(self, chat_id: str):
         db_controller = DBController()
@@ -66,11 +67,15 @@ class NLPController(BaseController):
         texts = [c.page_content for c in chunks]
         metadata = [c.metadata['source'] for c in chunks]
 
-        vectors = [
-            self.embedding_model.get_embedding(
-                text=text, document_type=DocumentTypeEnums.DOCUMENT.value)
-            for text in texts
-        ]
+        vectors = []
+        for cnt, text in enumerate(texts, 1):
+            if cnt % 1500 == 0:
+                sleep(60)
+            vectors.append(
+                self.embedding_model.get_embedding(
+                    text=text, document_type=DocumentTypeEnums.DOCUMENT.value)
+            )
+
         chunk_ids = chunk_ids if chunk_ids else list(range(len(chunks)))
 
         _ = self.vectordb_client.create_collection(
@@ -117,26 +122,34 @@ class NLPController(BaseController):
         all_messages = db_controller.get_all_messages_by_chat_id(
             chat_id=chat_id)
 
-        combined_messages = "Summarize the following conversation between user and ai\n"
-
-        last_prompt = ""
-
-        for idx, (sender, content) in enumerate(all_messages):
-            if idx == len(all_messages) - 1:
-                last_prompt = content
-            else:
-                combined_messages += f"{sender}: {content}\n"
-
-        llm = ChatGroq(
-            model_name="gemma2-9b-it",
-            temperature=0
-        )
-
-        summary = llm.invoke(combined_messages)
+        combined_messages = [
+            {
+                "role": "system",
+                "content": "You are a helpful assistant tasked with summarizing conversations. Provide a concise summary of the following message history."
+            },
+            {
+                'role': 'user',
+                'content': 'Here is the conversation history I would like to summarize:\n' +
+                '\n'.join([f'{sender}: {content}' for sender,
+                          content in all_messages[:-1]])
+            }
+        ]
+        last_prompt = all_messages[-1][1]
 
         if len(all_messages) == 1:
             return '', last_prompt
-        return summary.content, last_prompt
+
+        llm_client = Groq(
+            api_key=self.app_settings.GROQ_API_KEY,
+        )
+
+        message_summary = llm_client.chat.completions.create(
+            model="gemma2-9b-it",
+            temperature=0,
+            messages=combined_messages
+        )
+        if message_summary and len(message_summary.choices) > 0 and message_summary.choices[0].message and message_summary.choices[0].message.content:
+            return message_summary.choices[0].message.content, last_prompt
 
     def answer_rag_question(self, chat_id: str, limit: int = 10):
 
@@ -168,7 +181,8 @@ class NLPController(BaseController):
                 [
                     Prompt.document_prompt.substitute(
                         doc_num=idx,
-                        doc_content=self.generation_model.process_text(doc.text),
+                        doc_content=self.generation_model.process_text(
+                            doc.text),
                         doc_metadata=doc.metadata
                     )
                     for idx, doc in enumerate(retrieved_documents, 1)
