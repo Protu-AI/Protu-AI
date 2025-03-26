@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     In this class, we define the settings for the FastAPI Application that are loaded from the .env file
     '''
 
-    FILE_ALLOWED_TYPES: List[str]
+    FILE_ALLOWED_TYPES: List[str] 
     FILE_MAX_SIZE: int
     FILE_CHUNK_SIZE: int
 
