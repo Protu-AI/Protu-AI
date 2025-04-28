@@ -4,16 +4,7 @@ CREATE TABLE IF NOT EXISTS "users"
 (
     "id"                SERIAL PRIMARY KEY,
     "public_id"         CHAR(26)     NOT NULL UNIQUE,
-    "first_name"        VARCHAR(50)  NOT NULL,
-    "last_name"         VARCHAR(50)  NOT NULL,
-    "username"          VARCHAR(50)  NOT NULL UNIQUE,
-    "email"             VARCHAR(100) NOT NULL UNIQUE,
-    "password"          VARCHAR(100) NOT NULL,
-    "phone_number"      VARCHAR(20)  NOT NULL,
-    "roles"             TEXT         NOT NULL,
-    "is_active"         BOOLEAN      NOT NULL DEFAULT TRUE,
-    "is_email_verified" BOOLEAN      NOT NULL DEFAULT FALSE,
-    "image_url"         VARCHAR(255),
+    "roles" TEXT NOT NULL,
     "created_at"        TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at"        TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -55,8 +46,6 @@ CLUSTER chats USING idx_chats_user_id;
 CREATE INDEX idx_messages_chat_id ON "messages" ("chat_id");
 CLUSTER messages USING idx_messages_chat_id;
 
-CREATE INDEX idx_users_username ON "users" ("username");
-CREATE INDEX idx_users_email ON "users" ("email");
 CREATE INDEX idx_users_public_id ON "users" ("public_id");
 CREATE INDEX idx_attachments_message_id ON "attachments" ("message_id");
 
