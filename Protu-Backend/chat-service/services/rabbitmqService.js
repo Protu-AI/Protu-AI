@@ -11,20 +11,24 @@ const USER_UPDATED_KEY = 'user.updated';
 const USER_DELETED_KEY = 'user.deleted';
 const USER_PATTERN = 'user.*';
 
-async function connectRabbitMQ() {
-  try {
-    console.log(`Connecting to RabbitMQ at ${RABBITMQ_URL}...`);
-    const connection = await amqp.connect(RABBITMQ_URL);
-    const channel = await connection.createChannel();
-
-    await channel.assertExchange(USER_EVENTS_EXCHANGE, 'topic', {
-      durable: true
-    });
-
-    return channel;
-  } catch (error) {
-    console.error('Failed to connect to RabbitMQ:', error);
-    throw error;
+async function connectRabbitMQ(retries = 5, delay = 5000) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      console.log(`Connecting to RabbitMQ at ${RABBITMQ_URL}...`);
+      const connection = await amqp.connect(RABBITMQ_URL);
+      const channel = await connection.createChannel();
+      await channel.assertExchange(USER_EVENTS_EXCHANGE, 'topic', {
+        durable: true
+      });
+      return channel;
+    } catch (error) {
+      console.error(`Failed to connect to RabbitMQ (attempt ${i + 1}):`, error);
+      if (i < retries - 1) {
+        await new Promise(res => setTimeout(res, delay));
+      } else {
+        throw error;
+      }
+    }
   }
 }
 
@@ -93,24 +97,31 @@ async function createOrUpdateUser(userData) {
   try {
     console.log('User data received:', JSON.stringify(userData));
 
-    if (!userData.id) {
-      console.warn(
-        `Missing id for user ${userData.publicId}, attempting to use auto-increment`
-      );
-    }
-
-    await prisma.user.upsert({
-      where: { publicId: userData.publicId },
-      update: {
-        roles: userData.roles
-      },
-      create: {
-        ...(userData.id ? { id: userData.id } : {}),
-        publicId: userData.publicId,
-        roles: userData.roles
-      }
+    // Check if user already exists by publicId
+    const existingUser = await prisma.user.findUnique({
+      where: { publicId: userData.publicId }
     });
-    console.log(`User ${userData.publicId} created or updated successfully`);
+
+    if (existingUser) {
+      // Only update roles, do not update id
+      await prisma.user.update({
+        where: { publicId: userData.publicId },
+        data: {
+          roles: userData.roles
+        }
+      });
+      console.log(`User ${userData.publicId} updated successfully`);
+    } else {
+      // Create new user, include id if provided
+      await prisma.user.create({
+        data: {
+          ...(userData.id ? { id: userData.id } : {}),
+          publicId: userData.publicId,
+          roles: userData.roles
+        }
+      });
+      console.log(`User ${userData.publicId} created successfully`);
+    }
   } catch (error) {
     console.error(`Error creating/updating user ${userData.publicId}:`, error);
     throw error;

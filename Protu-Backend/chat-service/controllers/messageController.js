@@ -37,18 +37,18 @@ const createMessage = asyncWrapper(async (req, res) => {
 
   try {
     const hasAttachment = !!file;
-    // const aiResponse = await getAIResponse(chatId, hasAttachment);
+    const aiResponse = await getAIResponse(chatId, hasAttachment);
 
-    // const aiMessage = await messageService.createMessage(
-    //   chatId,
-    //   'model',
-    //   aiResponse.answer
-    // );
     const aiMessage = await messageService.createMessage(
       chatId,
       'model',
-      'No response from AI'
+      aiResponse.answer
     );
+    // const aiMessage = await messageService.createMessage(
+    //   chatId,
+    //   'model',
+    //   'No response from AI'
+    // );
 
     res.status(201).json(
       buildResponse(

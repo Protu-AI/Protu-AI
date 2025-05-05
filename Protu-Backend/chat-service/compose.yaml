@@ -12,6 +12,8 @@ services:
     depends_on:
       protu-db:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@protu-db:5432/protu-db
       AI_SERVICE_URL: http://model-service-container:8000
