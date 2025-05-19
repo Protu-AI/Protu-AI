@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class ResponseSignal(Enum):
     FILE_TYPE_NOT_ALLOWED = "File type not allowed"
     FILE_SIZE_EXCEEDS_LIMIT = "File size exceeds the limit"
@@ -13,3 +14,5 @@ class ResponseSignal(Enum):
     RESPONSE_GENERATION_FAILED = "Response generation failed"
     LLM_GENERATION_SUCCESS = "LLM generation successful"
     LLM_GENERATION_FAILED = "LLM generation failed"
+    AGENT_RESPONSE_SUCCESS = "Agent response successful"
+    AGENT_RESPONSE_FAILED = "Agent response failed"
