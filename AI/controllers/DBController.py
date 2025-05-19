@@ -61,7 +61,6 @@ class DBController(BaseController):
         message_id, content = self.get_last_message_by_chat_id(chat_id=chat_id)[
             0]
 
-        print(message_id)
 
         if message_id is not None:
 

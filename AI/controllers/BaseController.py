@@ -6,12 +6,14 @@ import random
 
 class BaseController:
     def __init__(self):
+
         self.app_settings = get_settings()
         self.base_dir = os.path.dirname(os.path.dirname(__file__))
         self.database_dir = os.path.join(
             self.base_dir,
             'assets/database'
         )
+        os.environ["GEMINI_API_KEY"] = self.app_settings.GOOGLE_API_KEY
 
     def generate_random_string(self, length=12):
         return ''.join(random.choices(string.ascii_lowercase + string.digits, k=length))
