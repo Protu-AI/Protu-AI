@@ -43,6 +43,9 @@ class Settings(BaseSettings):
     DEFAULT_LANGUAGE: str = 'en'
     PRIMARY_LANGUAGE: str
 
+    QUIZ_GENERATION_MODEL_ID: str
+    QUIZ_GENERATION_MODEL_TEMPERATURE: float
+
     class Config:
         env_file = '.env'
 
