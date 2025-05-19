@@ -1,7 +1,7 @@
 from fastapi import FastAPI
-from routes import base, data
+from routes import base, data, quiz
 
-from controllers import DBController, NLPController
+from controllers import DBController, NLPController, AgentsController
 
 from contextlib import asynccontextmanager
 
@@ -39,6 +39,9 @@ async def startup_spam():
     )
     app.vectordb_client.connect()
 
+    # Agents Controller
+    app.agents_controller = AgentsController()
+
 
 async def shutdown_spam():
 
@@ -56,3 +59,4 @@ app = FastAPI(lifespan=lifespan)
 
 app.include_router(base.base_router)
 app.include_router(data.data_router)
+app.include_router(quiz.quiz_router)
