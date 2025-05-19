@@ -46,7 +46,7 @@ async def process_end(request: Request, process_request: ProcessRequest):
         )
     except Exception as e:
         logger.log(logging.WARNING, f"Error in trigger_llm_response: {e}")
-        print(e)
+        
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=ResponseSignal.LLM_GENERATION_FAILED.value
