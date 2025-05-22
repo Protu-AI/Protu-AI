@@ -21,18 +21,23 @@ class TagAgentInput(BaseModel):
         default=6, description="Number of tags to be generated for the quiz")
 
 
-class QuizAgentInput(BaseModel):
+class TagsFilterOutput(BaseModel):
+    final_tags: List[str] = Field(
+        min_length=6, description="List of at least 6 programming and software engineering-related tags curated from the prompt, tags, additional tags, and preferences, aligned with the quiz's difficulty and question type"
+    )
 
-    prompt: str = Field(...)
-    difficulty: str = Field(...)
-    question_type: str = Field(...)
+
+class QuizGenerationInput(BaseModel):
+    prompt: str = Field(...,
+                        description="The prompt describing the quiz content")
+    difficulty: str = Field(
+        ..., description="Difficulty level of the quiz (e.g., Beginner, Intermediate, Advanced)")
+    question_type: str = Field(
+        ..., description="Type of questions (e.g., Multiple Choice, True/False, Combination between both)")
     time: int = Field(..., description="Time to solve the quiz in minutes")
-    tags: List[str] = Field(
-        default=[], description="List of tags for the quiz based on the prompt")
-    additional_tags: List[str] = Field(
-        default=[], description="List of additional tags for the quiz from the user")
-    additional_preferences: str = Field(
-        description="Additional preferences for the quiz generation")
+    final_tags: List[str] = Field(
+        min_length=6, description="Curated list of programming and software engineering-related tags from the Tag Filtering Agent"
+    )
 
 
 class QuizQuestion(BaseModel):
@@ -40,13 +45,13 @@ class QuizQuestion(BaseModel):
                           description="The question to be asked in the quiz")
     options: List[str] = Field(
         ..., min_length=2, max_length=4, description="List of options for the question")
-    # correct_answer: str = Field(
-    #     ..., max_length=1, description="The correct option to the question")
     correct_answer_text: str = Field(
         ..., description="The correct answer text to the question")
 
 
 class QuizAgentResponse(BaseModel):
+    quiz_title: str = Field(
+        ..., description="A descriptive title for the quiz based on the prompt, difficulty, tags, and the questions generated")
     questions: List[QuizQuestion] = Field(
         ..., min_length=25, description="List of questions for the quiz based on the prompt and the tags")
 
@@ -65,6 +70,6 @@ class FeedbackInput(BaseModel):
         ..., description="List of questions for the quiz based on the prompt and the tags")
 
 
-# class FeedbackAgentResponse(BaseModel):
-#     feedback: str = Field(
-#         default="", description="Feedback for the quiz based on the user answers and the correct answers")
+class FeedbackAgentResponse(BaseModel):
+    feedback: str = Field(
+        default="", description="Feedback for the quiz based on the user answers and the correct answers")

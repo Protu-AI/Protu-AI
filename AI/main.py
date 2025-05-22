@@ -10,11 +10,16 @@ from helpers import get_settings
 from stores.llm import LLMFactoryProvider
 from stores.vectordb import VectorDBFactoryProvider
 
+import agentops
+
 
 async def startup_spam():
 
     settings = get_settings()
 
+    agentops.init(
+        api_key=settings.AGENTOPS_API_KEY,
+    )
     app.db_controller = DBController()
 
     llm_factory_provider = LLMFactoryProvider(config=settings)
@@ -47,6 +52,7 @@ async def shutdown_spam():
 
     app.db_controller.db_disconnect()
     app.vectordb_client.disconnect()
+    # agentops.end_session()
 
 
 @asynccontextmanager
