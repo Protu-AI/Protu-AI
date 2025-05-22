@@ -51,7 +51,9 @@ class QuizQuestion(BaseModel):
 
 class QuizAgentResponse(BaseModel):
     quiz_title: str = Field(
-        ..., description="A descriptive title for the quiz based on the prompt, difficulty, tags, and the questions generated")
+        ..., description="A concise title reflecting the topic and difficulty of the quiz (e.g., 'Intermediate Python Quiz')")
+    topic: str = Field(
+        ..., description="A topic (at most two words) derived from final_tags, describing the quiz questions' content (e.g., 'JavaScript Basics', 'Python Algorithms')")
     questions: List[QuizQuestion] = Field(
         ..., min_length=25, description="List of questions for the quiz based on the prompt and the tags")
 

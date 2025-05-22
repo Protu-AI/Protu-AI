@@ -90,12 +90,13 @@ tag_filtering_agent_expected_output = "\n".join([
 quiz_generation_agent_role = "Quiz Generation Agent"
 
 quiz_generation_agent_goal = "\n".join([
-    "Generate a quiz with 25+ questions and a descriptive title based on the provided prompt, difficulty, question type, time, and curated final tags.",
+    "Generate a quiz with 25+ questions, a concise title, and a topic (at most two words) based on the provided prompt, difficulty, question type, time, and curated final tags.",
     "Questions must align with the prompt and final tags, which are programming and software engineering-related (e.g., Python, front-end, back-end, data science).",
     "Ensure questions are diverse, high-quality, and aligned with the specified difficulty and question type (Multiple Choice, True/False, or Combination).",
     "The quiz should be engaging, educational, and fit within the time limit.",
     "Cover all aspects of the prompt and final tags to provide a comprehensive quiz experience.",
-    "Generate a title that reflects the prompt, difficulty, and final tags, making it clear and appealing."
+    "Generate a title that reflects the topic and difficulty, keeping it concise and appealing.",
+    "Generate a topic (at most two words) derived from the final tags, summarizing the quiz content."
 ])
 
 quiz_generation_agent_backstory = "\n".join([
@@ -105,7 +106,7 @@ quiz_generation_agent_backstory = "\n".join([
 ])
 
 quiz_generation_task_description = "\n".join([
-    "Generate a quiz with 25+ questions and a title using:",
+    "Generate a quiz with 25+ questions, a title, and a topic using:",
     "- Prompt: {prompt}",
     "- Difficulty: {difficulty}",
     "- Question Type: {question_type} (Multiple Choice, True/False, or Combination)",
@@ -113,7 +114,8 @@ quiz_generation_task_description = "\n".join([
     "- Final Tags: from the Tag Filtering Agent",
     "",
     "Instructions:",
-    "- Generate a quiz title reflecting the prompt, difficulty, and final tags (e.g., 'Intermediate Python and Web Development Quiz').",
+    "- Generate a concise quiz title reflecting the topic and difficulty (e.g., 'Intermediate Python Quiz').",
+    "- Generate a topic (at most two words) derived from the final tags, summarizing the quiz content (e.g., 'JavaScript Basics', 'Python Algorithms').",
     "- For each question, provide:",
     "  - `question`: the question text, aligned with the prompt and final tags.",
     "  - `options`:",
@@ -123,16 +125,17 @@ quiz_generation_task_description = "\n".join([
     "  - `correct_answer_text`: the full text of the correct option ('True' or 'False' for True/False; one of the 4 choices for Multiple Choice).",
     "- Ensure questions are diverse, covering all final tags and matching the difficulty level (e.g., basic syntax for Beginner, algorithms for Advanced).",
     "- Ensure questions fit the time limit (e.g., 1–2 minutes per question).",
-    "- Output JSON conforming to the QuizAgentResponse model with 'quiz_title' and 'questions' fields."
+    "- Output JSON conforming to the QuizAgentResponse model with 'quiz_title', 'topic', and 'questions' fields."
 ])
 
 quiz_generation_task_expected_output = "\n".join([
     "Output a JSON conforming to the QuizAgentResponse model with:",
-    "- `quiz_title`: a descriptive title based on the prompt, difficulty, and final tags.",
+    "- `quiz_title`: a concise title based on the topic and difficulty.",
+    "- `topic`: a topic (at most two words) derived from the final tags, summarizing the quiz content.",
     "- `questions`: list of 25+ items, each containing:",
     "  - `question`: the question text.",
     "  - `options`: 4 choices for Multiple Choice, 2 choices ('True', 'False') for True/False, or a mix for Combination.",
-    "  - `correct_answer_text`: the correct option.",
+    "  - `correct_answer_text`: the correct option."
 ])
 
 feedback_system_prompt = '\n'.join([
