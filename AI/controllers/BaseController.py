@@ -14,6 +14,7 @@ class BaseController:
             'assets/database'
         )
         os.environ["GEMINI_API_KEY"] = self.app_settings.GOOGLE_API_KEY
+        os.environ['AGENTOPS_API_KEY'] = self.app_settings.AGENTOPS_API_KEY
 
     def generate_random_string(self, length=12):
         return ''.join(random.choices(string.ascii_lowercase + string.digits, k=length))

@@ -13,6 +13,7 @@ from models import *
 
 from Prompt import *
 
+from routes.schemas import QuizAgentInput
 
 import os
 
@@ -33,23 +34,16 @@ class AgentsController(BaseController):
 
     def create_tag_suggestion_crew(self):
 
-        agent_role = tag_suggestion_agent_role
-        agent_goal = tag_suggestion_agent_goal
-        agent_backstory = tag_suggestion_agent_backstory
-
         tags_suggestion_agent = AgentBuilder().create_agent(
-            agent_role=agent_role,
-            agent_goal=agent_goal,
-            agent_backstory=agent_backstory,
+            agent_role=tag_suggestion_agent_role,
+            agent_goal=tag_suggestion_agent_goal,
+            agent_backstory=tag_suggestion_agent_backstory,
             agent_llm=self.llm
         )
 
-        task_description = tag_suggestion_task_description
-        expected_output = tag_suggestion_task_expected_output
-
         tags_suggestion_task = TaskBuilder().create_task(
-            task_description=task_description,
-            expected_output=expected_output,
+            task_description=tag_suggestion_task_description,
+            expected_output=tag_suggestion_task_expected_output,
             output_json=TagAgentResponse,
             task_agent=tags_suggestion_agent
         )
@@ -77,30 +71,49 @@ class AgentsController(BaseController):
         return crew_output
 
     def create_quiz_generation_crew(self):
-        quiz_agent_role = quiz_generation_agent_role
-        quiz_agent_goal = quiz_generation_agent_goal
-        quiz_agent_backstory = quiz_generation_agent_backstory
 
-        quiz_generation_agent = AgentBuilder().create_agent(
-            agent_role=quiz_agent_role,
-            agent_goal=quiz_agent_goal,
-            agent_backstory=quiz_agent_backstory,
+        # First let's implement the tag filtering agent
+        tag_filter_agent = AgentBuilder().create_agent(
+            agent_role=tag_filtering_agent_role,
+            agent_goal=tag_filtering_agent_goal,
+            agent_backstory=tag_filtering_agent_backstory,
             agent_llm=self.llm
         )
 
-        task_description = quiz_generation_task_description
-        expected_output = quiz_generation_task_expected_output
+        tag_filter_task = TaskBuilder().create_task(
+            name="tag_filter_task",
+            task_description=tag_filtering_agent_task_description,
+            expected_output=tag_filtering_agent_expected_output,
+            output_json=TagsFilterOutput,
+            task_agent=tag_filter_agent
+        )
+
+        # Second Let's implement the quiz generation agent
+
+        quiz_generation_agent = AgentBuilder().create_agent(
+            agent_role=quiz_generation_agent_role,
+            agent_goal=quiz_generation_agent_goal,
+            agent_backstory=quiz_generation_agent_backstory,
+            agent_llm=self.llm
+        )
 
         quiz_generation_task = TaskBuilder().create_task(
-            task_description=task_description,
-            expected_output=expected_output,
+            task_description=quiz_generation_task_description,
+            expected_output=quiz_generation_task_expected_output,
             output_json=QuizAgentResponse,
-            task_agent=quiz_generation_agent
+            task_agent=quiz_generation_agent,
+            context=[tag_filter_task]
         )
 
         self.quiz_generation_crew = CrewAIBuilder(
-            crew_tasks=[quiz_generation_task],
-            crew_agents=[quiz_generation_agent]
+            crew_tasks=[
+                tag_filter_task,
+                quiz_generation_task
+            ],
+            crew_agents=[
+                tag_filter_agent,
+                quiz_generation_agent
+            ]
         ).create_crew()
 
         return self.quiz_generation_crew

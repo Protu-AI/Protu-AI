@@ -3,9 +3,11 @@ from fastapi.responses import JSONResponse
 
 from controllers import AgentsController, NLPController
 
-from models import TagAgentInput, QuizAgentInput, FeedbackInput
+from models import TagAgentInput, FeedbackInput
 
 from controllers.Enums import ResponseSignal
+
+from .schemas import *
 
 import logging
 
@@ -68,7 +70,7 @@ async def create_quiz(request: Request, quiz_request: QuizAgentInput):
         status_code=status.HTTP_200_OK,
         content={
             'signal': ResponseSignal.AGENT_RESPONSE_SUCCESS.value,
-            'quiz': agent_quiz_response.to_dict()['questions'],
+            'quiz': agent_quiz_response.to_dict(),
         }
     )
 

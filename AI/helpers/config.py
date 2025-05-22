@@ -45,6 +45,7 @@ class Settings(BaseSettings):
 
     QUIZ_GENERATION_MODEL_ID: str
     QUIZ_GENERATION_MODEL_TEMPERATURE: float
+    AGENTOPS_API_KEY: str
 
     class Config:
         env_file = '.env'
