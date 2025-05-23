@@ -11,7 +11,7 @@ from controllers import DataController, BaseController, NLPController, DBControl
 from controllers.Enums import ResponseSignal
 
 import logging
-from .schemes.data import ProcessRequest
+from .schemas.data import ProcessRequest
 data_router = APIRouter(
     prefix="/protu/ai/data"
 )
