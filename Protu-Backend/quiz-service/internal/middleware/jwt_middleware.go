@@ -2,11 +2,11 @@ package middleware
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"protu.ai/quiz-service/config"
 	"protu.ai/quiz-service/pkg/errors"
 	apiResponse "protu.ai/quiz-service/pkg/response"
 )
@@ -15,7 +15,7 @@ type UserClaims struct {
 	jwt.RegisteredClaims
 }
 
-func JWTMiddleware() gin.HandlerFunc {
+func JWTMiddleware(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 
@@ -26,7 +26,7 @@ func JWTMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		userID, err := validateToken(token)
+		userID, err := validateToken(token, cfg.JWTSecret)
 		if err != nil {
 			apiResponse.Error(c, errors.AuthenticationError("Invalid or expired token"))
 			c.Abort()
@@ -57,10 +57,9 @@ func getTokenFromHeader(authHeader string) (string, error) {
 	return token, nil
 }
 
-func validateToken(tokenString string) (string, error) {
-	jwtSecret := os.Getenv("JWT_SECRET")
+func validateToken(tokenString string, jwtSecret string) (string, error) {
 	if jwtSecret == "" {
-		return "", fmt.Errorf("JWT_SECRET environment variable is not set")
+		return "", fmt.Errorf("JWT secret is not configured")
 	}
 
 	token, err := jwt.ParseWithClaims(tokenString, &UserClaims{}, func(token *jwt.Token) (interface{}, error) {

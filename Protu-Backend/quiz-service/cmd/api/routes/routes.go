@@ -6,12 +6,14 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"protu.ai/quiz-service/cmd/api/handlers"
+	"protu.ai/quiz-service/config"
 	"protu.ai/quiz-service/internal/middleware"
 	apiResponse "protu.ai/quiz-service/pkg/response"
 )
 
 func SetupRoutes(
 	router *gin.Engine,
+	cfg *config.Config,
 	quizHandler *handlers.QuizHandler,
 	attemptHandler *handlers.AttemptHandler,
 	dashboardHandler *handlers.DashboardHandler,
@@ -33,7 +35,7 @@ func SetupRoutes(
 		})
 
 	v1 := router.Group("/api/v1")
-	v1.Use(middleware.JWTMiddleware())
+	v1.Use(middleware.JWTMiddleware(cfg))
 	{
 		dashboard := v1.Group("/quizzes")
 		{

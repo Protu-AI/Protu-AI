@@ -55,7 +55,7 @@ func main() {
 	router.Use(middleware.ErrorHandler())
 	router.Use(middleware.ValidationMiddleware())
 
-	routes.SetupRoutes(router, quizHandler, attemptHandler, dashboardHandler)
+	routes.SetupRoutes(router, &cfg, quizHandler, attemptHandler, dashboardHandler)
 
 	log.Printf("Starting quiz service on %s", cfg.HTTPServerAddress)
 	if err := router.Run(cfg.HTTPServerAddress); err != nil {

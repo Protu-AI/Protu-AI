@@ -15,6 +15,9 @@ type Config struct {
 
 	// AI Service connection
 	AIBaseURL string `mapstructure:"AI_BASE_URL"`
+
+	// Authentication configuration
+	JWTSecret string `mapstructure:"JWT_SECRET"`
 }
 
 func LoadConfig(path string) (config Config, err error) {
