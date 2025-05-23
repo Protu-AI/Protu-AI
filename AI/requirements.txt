@@ -18,3 +18,4 @@ crewai==0.119.0
 zipp==3.21.0
 httplib2==0.22.0
 google-api-python-client==2.169.0
+agentops==0.3.2
