@@ -1,56 +1,89 @@
 package org.protu.contentservice.track;
 
-import lombok.RequiredArgsConstructor;
-import org.protu.contentservice.common.exception.custom.EntityAlreadyExistsException;
 import org.protu.contentservice.common.exception.custom.EntityNotFoundException;
-import org.protu.contentservice.track.dto.TrackRequest;
-import org.protu.contentservice.track.dto.TrackResponse;
+import org.protu.contentservice.course.CourseDto;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
-@RequiredArgsConstructor
 public class TrackService {
 
-  private final TrackRepository trackRepo;
-  private final TrackMapper trackMapper;
+  private static final String CACHE_ALL_TRACK_LIST = "all-tracks-list";
+  private static final String CACHE_TRACK_DETAILS = "track-details";
+  private static final String CACHE_TRACK_COURSES = "track-courses";
+  private final TrackRepository tracks;
 
-  public Track fetchTrackByNameOrThrow(String trackName) {
-    return trackRepo.findTrackByName(trackName).orElseThrow(() -> new EntityNotFoundException("Track", trackName));
+  public TrackService(TrackRepository tracks) {
+    this.tracks = tracks;
   }
 
-  public TrackResponse createTrack(TrackRequest trackRequest) {
-    trackRepo.findTrackByName(trackRequest.name()).ifPresent(track -> {
-      throw new EntityAlreadyExistsException("Track", trackRequest.name());
-    });
-
-    Track track = trackMapper.toTrackEntity(trackRequest);
-    trackRepo.save(track);
-    return trackMapper.toTrackDto(track);
+  @Transactional
+  @CacheEvict(value = CACHE_ALL_TRACK_LIST, allEntries = true)
+  public void createTrackIfNotExists(TrackRequest trackRequest) {
+    tracks.add(trackRequest);
   }
 
-  public List<TrackResponse> getAllTracks() {
-    List<Track> tracks = trackRepo.findAll();
-    return trackMapper.toTrackDtoList(tracks);
+  @Transactional(readOnly = true)
+  @Cacheable(value = CACHE_ALL_TRACK_LIST, unless = "#result == null || #result.isEmpty()")
+  public List<TrackWithCourses> getAllTracks() {
+    return tracks.findAll().orElse(null);
   }
 
-  public TrackResponse getTrackByName(String trackName) {
-    Track track = fetchTrackByNameOrThrow(trackName);
-    return trackMapper.toTrackDto(track);
+  @Transactional(readOnly = true)
+  @Cacheable(value = CACHE_TRACK_DETAILS, key = "#trackName", unless = "#result == null")
+  public TrackWithCourses getTrackByName(String trackName) {
+    return tracks.findByName(trackName)
+        .orElseThrow(() -> new EntityNotFoundException("Track", trackName));
   }
 
-  public TrackResponse updateTrack(String trackName, TrackRequest trackRequest) {
-    Track track = fetchTrackByNameOrThrow(trackName);
-    Optional.ofNullable(trackRequest.name()).ifPresent(track::setName);
-    Optional.ofNullable(trackRequest.description()).ifPresent(track::setDescription);
-
-    trackRepo.save(track);
-    return trackMapper.toTrackDto(track);
+  @Transactional
+  @Caching(evict = {
+      @CacheEvict(value = CACHE_ALL_TRACK_LIST, allEntries = true),
+      @CacheEvict(value = CACHE_TRACK_DETAILS, key = "#trackName"),
+      @CacheEvict(value = CACHE_TRACK_COURSES, key = "#trackName")
+  })
+  public void updateTrack(String trackName, TrackRequest trackRequest) {
+    tracks.update(trackName, trackRequest);
   }
 
+  @Transactional
+  @Caching(evict = {
+      @CacheEvict(value = CACHE_ALL_TRACK_LIST, allEntries = true),
+      @CacheEvict(value = CACHE_TRACK_DETAILS, key = "#trackName"),
+      @CacheEvict(value = CACHE_TRACK_COURSES, key = "#trackName")
+  })
   public void deleteTrack(String trackName) {
-    trackRepo.findTrackByName(trackName).ifPresent(trackRepo::delete);
+    tracks.delete(trackName);
+  }
+
+  @Transactional(readOnly = true)
+  @Cacheable(value = CACHE_TRACK_COURSES, key = "#trackName", unless = "#result == null || #result.isEmpty()")
+  public List<CourseDto> getAllCoursesForTrack(String trackName) {
+    return tracks.findCoursesByTrackName(trackName).orElse(null);
+  }
+
+  @Transactional
+  @Caching(evict = {
+      @CacheEvict(value = CACHE_ALL_TRACK_LIST, allEntries = true),
+      @CacheEvict(value = CACHE_TRACK_DETAILS, key = "#trackName"),
+      @CacheEvict(value = CACHE_TRACK_COURSES, key = "#trackName")
+  })
+  public void addExistingCourseToTrack(String trackName, String courseName) {
+    tracks.addCourseToTrack(trackName, courseName);
+  }
+
+  @Transactional
+  @Caching(evict = {
+      @CacheEvict(value = CACHE_ALL_TRACK_LIST, allEntries = true),
+      @CacheEvict(value = CACHE_TRACK_DETAILS, key = "#trackName"),
+      @CacheEvict(value = CACHE_TRACK_COURSES, key = "#trackName")
+  })
+  public void deleteCourseFromTrack(String trackName, String courseName) {
+    tracks.deleteCourseFromTrack(trackName, courseName);
   }
 }

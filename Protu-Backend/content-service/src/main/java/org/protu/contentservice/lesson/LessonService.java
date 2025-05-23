@@ -1,74 +1,61 @@
 package org.protu.contentservice.lesson;
 
-import lombok.RequiredArgsConstructor;
-import org.protu.contentservice.common.exception.custom.EntityAlreadyExistsException;
-import org.protu.contentservice.course.Course;
-import org.protu.contentservice.course.CourseRepository;
-import org.protu.contentservice.course.CourseService;
+import org.protu.contentservice.common.exception.custom.EntityNotFoundException;
 import org.protu.contentservice.lesson.dto.LessonRequest;
-import org.protu.contentservice.lesson.dto.LessonResponse;
-import org.protu.contentservice.lesson.dto.LessonSummary;
 import org.protu.contentservice.lesson.dto.LessonUpdateRequest;
+import org.protu.contentservice.lesson.dto.LessonWithContent;
+import org.protu.contentservice.lesson.dto.LessonWithoutContent;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
-import java.util.Optional;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@RequiredArgsConstructor
 public class LessonService {
 
-  private final CourseService courseService;
-  private final CourseRepository courseRepo;
-  private final LessonRepository lessonRepo;
-  private final LessonHelper lessonHelper;
-  private final LessonMapper lessonMapper;
+  private static final String CACHE_LESSON_WITH_CONTENT = "lesson-with-content";
+  private static final String CACHE_LESSON_WITHOUT_CONTENT = "lesson-without-content";
+  private final LessonRepository lessons;
 
-  public LessonResponse createLesson(LessonRequest lessonRequest) {
-    lessonRepo.findLessonByName(lessonRequest.name()).ifPresent(lesson -> {
-      throw new EntityAlreadyExistsException("Lesson", lessonRequest.name());
-    });
-
-    Lesson lesson = lessonMapper.toLessonEntity(lessonRequest);
-    lessonRepo.save(lesson);
-    return lessonMapper.toLessonDto(lesson);
+  public LessonService(LessonRepository lessons) {
+    this.lessons = lessons;
   }
 
-  public LessonResponse getLessonByName(String lessonName) {
-    Lesson lesson = lessonHelper.fetchLessonByNameOrThrow(lessonName);
-    return lessonMapper.toLessonDto(lesson);
+  @Transactional
+  public void createLesson(LessonRequest lessonRequest) {
+    lessons.add(lessonRequest);
   }
 
-  public LessonResponse updateLesson(String lessonName, LessonUpdateRequest lessonRequest) {
-    Lesson lesson = lessonHelper.fetchLessonByNameOrThrow(lessonName);
-    Optional.ofNullable(lessonRequest.name()).ifPresent(lesson::setName);
-    Optional.ofNullable(lessonRequest.content()).ifPresent(lesson::setContent);
-    Optional.ofNullable(lessonRequest.lessonOrder()).ifPresent(lesson::setLessonOrder);
-    lessonRepo.save(lesson);
-    return lessonMapper.toLessonDto(lesson);
+  @Transactional(readOnly = true)
+  @Cacheable(value = CACHE_LESSON_WITH_CONTENT, key = "#lessonName", unless = "#result == null")
+  public LessonWithContent findByName(String lessonName) {
+    return lessons.findByName(lessonName)
+        .orElseThrow(() -> new EntityNotFoundException("Lesson", lessonName));
   }
 
-  public List<LessonSummary> getAllLessonsForCourse(String courseName) {
-    Course course = courseService.fetchCourseByNameOrThrow(courseName);
-    return lessonRepo.findAllLessonsInCourse(course.getId());
+  @Transactional(readOnly = true)
+  @Cacheable(value = CACHE_LESSON_WITHOUT_CONTENT, key = "#lessonName", unless = "#result == null")
+  public LessonWithoutContent findByNameWithoutContent(String lessonName) {
+    return lessons.findByNameWithoutContent(lessonName)
+        .orElseThrow(() -> new EntityNotFoundException("Lesson", lessonName));
   }
 
-  public void addExistingLessonToCourse(String courseName, String lessonName) {
-    Course course = courseService.fetchCourseByNameOrThrow(courseName);
-    Lesson lesson = lessonHelper.fetchLessonByNameOrThrow(lessonName);
-    lesson.setCourse(course);
-    course.getLessons().add(lesson);
-    courseRepo.save(course);
+  @Transactional
+  @Caching(evict = {
+      @CacheEvict(value = CACHE_LESSON_WITH_CONTENT, key = "#lessonName"),
+      @CacheEvict(value = CACHE_LESSON_WITHOUT_CONTENT, key = "#lessonName")
+  })
+  public void updateLesson(String lessonName, LessonUpdateRequest lessonRequest) {
+    lessons.update(lessonName, lessonRequest);
   }
 
-  public void deleteLessonFromCourse(String courseName, String lessonName) {
-    Course course = courseService.fetchCourseByNameOrThrow(courseName);
-    Lesson lesson = lessonHelper.fetchLessonByNameOrThrow(lessonName);
-    if (course.getLessons().remove(lesson)) {
-      lesson.setCourse(null);
-    }
-
-    courseRepo.save(course);
-    lessonRepo.save(lesson);
+  @Transactional
+  @Caching(evict = {
+      @CacheEvict(value = CACHE_LESSON_WITH_CONTENT, key = "#lessonName"),
+      @CacheEvict(value = CACHE_LESSON_WITHOUT_CONTENT, key = "#lessonName")
+  })
+  public void deleteLesson(String lessonName) {
+    lessons.delete(lessonName);
   }
 }
