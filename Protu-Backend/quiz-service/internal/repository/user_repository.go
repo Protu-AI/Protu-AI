@@ -16,6 +16,7 @@ type UserRepository interface {
 	Create(ctx context.Context, user *models.User) error
 	Update(ctx context.Context, user *models.User) error
 	Delete(ctx context.Context, publicID string) error
+	CreateOrUpdate(ctx context.Context, user *models.User) error
 }
 
 type userRepository struct {
@@ -97,4 +98,18 @@ func (r *userRepository) Delete(ctx context.Context, publicID string) error {
 	}
 
 	return nil
+}
+
+func (r *userRepository) CreateOrUpdate(ctx context.Context, user *models.User) error {
+	existingUser, err := r.FindByPublicID(ctx, user.PublicID)
+	if err != nil && err != ErrNotFound {
+		return err
+	}
+
+	if existingUser != nil {
+		existingUser.Roles = user.Roles
+		return r.Update(ctx, existingUser)
+	} else {
+		return r.Create(ctx, user)
+	}
 }

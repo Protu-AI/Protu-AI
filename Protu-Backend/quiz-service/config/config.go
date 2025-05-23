@@ -18,6 +18,9 @@ type Config struct {
 
 	// Authentication configuration
 	JWTSecret string `mapstructure:"JWT_SECRET"`
+
+	// RabbitMQ configuration
+	RabbitMQURL string `mapstructure:"RABBITMQ_URL"`
 }
 
 func LoadConfig(path string) (config Config, err error) {

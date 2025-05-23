@@ -11,6 +11,7 @@ services:
       - ./.env
     depends_on:
       - mongo
+      - rabbitmq
 
   mongo:
     image: mongo:7.0

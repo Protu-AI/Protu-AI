@@ -39,11 +39,28 @@ func main() {
 
 	quizRepo := repository.NewQuizRepository(database)
 	attemptRepo := repository.NewAttemptRepository(database)
+	userRepo := repository.NewUserRepository(database)
 
 	quizService := service.NewQuizService(quizRepo)
 	attemptService := service.NewAttemptService(attemptRepo, quizRepo)
 	dashboardService := service.NewDashboardService(quizRepo, attemptRepo)
 	aiService := service.NewAIService(&cfg)
+
+	rabbitmqURL := cfg.RabbitMQURL
+	rabbitMQService := service.NewRabbitMQService(rabbitmqURL, userRepo)
+
+	err = rabbitMQService.Connect()
+	if err != nil {
+		log.Printf("Warning: Failed to connect to RabbitMQ: %v", err)
+		log.Println("Continuing without RabbitMQ user event listening...")
+	} else {
+		err = rabbitMQService.StartListening()
+		if err != nil {
+			log.Printf("Warning: Failed to start RabbitMQ listener: %v", err)
+		} else {
+			log.Println("RabbitMQ user event listener started successfully")
+		}
+	}
 
 	quizHandler := handlers.NewQuizHandler(quizService, aiService)
 	attemptHandler := handlers.NewAttemptHandler(attemptService, quizService, aiService)
