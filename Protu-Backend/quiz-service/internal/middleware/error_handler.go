@@ -4,10 +4,20 @@ import (
 	"fmt"
 	"runtime/debug"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"protu.ai/quiz-service/pkg/errors"
 	"protu.ai/quiz-service/pkg/response"
 )
+
+func CORSMiddleware() gin.HandlerFunc {
+	config := cors.DefaultConfig()
+	config.AllowAllOrigins = true
+	config.AllowCredentials = true
+	config.AllowHeaders = []string{"*"}
+	config.AllowMethods = []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"}
+	return cors.New(config)
+}
 
 func ErrorHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
