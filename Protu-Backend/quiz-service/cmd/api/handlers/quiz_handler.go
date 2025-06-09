@@ -114,7 +114,11 @@ func (h *QuizHandler) CreateQuizStage1(c *gin.Context) {
 
 	questionType := "multiple_choice"
 	if len(createdQuiz.QuestionTypes) > 0 {
-		questionType = createdQuiz.QuestionTypes[0]
+		if len(createdQuiz.QuestionTypes) > 1 {
+			questionType = "mixed"
+		} else {
+			questionType = createdQuiz.QuestionTypes[0]
+		}
 	}
 
 	subtopicSuggestions, err := h.aiService.GetSubtopicSuggestions(
@@ -182,7 +186,11 @@ func (h *QuizHandler) CompleteQuizStage2(c *gin.Context) {
 
 	questionType := "multiple_choice"
 	if len(quiz.QuestionTypes) > 0 {
-		questionType = quiz.QuestionTypes[0]
+		if len(quiz.QuestionTypes) > 1 {
+			questionType = "mixed"
+		} else {
+			questionType = quiz.QuestionTypes[0]
+		}
 	}
 
 	log.Printf("Calling AI service to generate questions for quiz ID: %s", stage2Req.QuizID)
@@ -192,6 +200,7 @@ func (h *QuizHandler) CompleteQuizStage2(c *gin.Context) {
 		quiz.DifficultyLevel,
 		questionType,
 		quiz.TimeLimit,
+		quiz.NumberOfQuestions,
 		quiz.Subtopics,
 		quiz.AdditionalSubtopics,
 		quiz.AdditionalPrefs,
@@ -213,25 +222,6 @@ func (h *QuizHandler) CompleteQuizStage2(c *gin.Context) {
 		return
 	}
 
-	var publicQuestions []response.PublicQuestionDetail
-	for _, q := range updatedQuiz.Questions {
-		var publicOptions []response.PublicOption
-		for _, opt := range q.Options {
-			publicOptions = append(publicOptions, response.PublicOption{
-				Text: opt.Text,
-			})
-		}
-
-		publicQuestions = append(publicQuestions, response.PublicQuestionDetail{
-			ID:           q.ID.Hex(),
-			QuestionText: q.QuestionText,
-			QuestionType: q.QuestionType,
-			Options:      publicOptions,
-			CodeSnippet:  "",
-			Order:        q.Order,
-		})
-	}
-
 	stage2Response := response.QuizStage2Response{
 		ID:                  updatedQuiz.ID.Hex(),
 		Title:               updatedQuiz.Title,
@@ -245,7 +235,6 @@ func (h *QuizHandler) CompleteQuizStage2(c *gin.Context) {
 		TimeLimit:           updatedQuiz.TimeLimit,
 		AdditionalPrefs:     updatedQuiz.AdditionalPrefs,
 		Status:              updatedQuiz.Status,
-		Questions:           publicQuestions,
 		CreatedAt:           updatedQuiz.CreatedAt,
 		UpdatedAt:           updatedQuiz.UpdatedAt,
 	}

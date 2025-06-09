@@ -35,6 +35,7 @@ class QuizGenerationInput(BaseModel):
     question_type: str = Field(
         ..., description="Type of questions (e.g., Multiple Choice, True/False, Combination between both)")
     time: int = Field(..., description="Time to solve the quiz in minutes")
+    number_of_questions: int = Field(..., description="Number of questions to generate for the quiz")
     final_tags: List[str] = Field(
         min_length=6, description="Curated list of programming and software engineering-related tags from the Tag Filtering Agent"
     )
@@ -55,7 +56,7 @@ class QuizAgentResponse(BaseModel):
     topic: str = Field(
         ..., description="A topic (at most two words) derived from final_tags, describing the quiz questions' content (e.g., 'JavaScript Basics', 'Python Algorithms')")
     questions: List[QuizQuestion] = Field(
-        ..., min_length=25, description="List of questions for the quiz based on the prompt and the tags")
+        ..., min_length=1, description="List of questions for the quiz based on the prompt and the tags")
 
 
 class QuizModelAnswer(BaseModel):
