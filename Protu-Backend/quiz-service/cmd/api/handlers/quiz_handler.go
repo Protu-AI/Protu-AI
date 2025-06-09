@@ -103,7 +103,7 @@ func (h *QuizHandler) CreateQuizStage1(c *gin.Context) {
 		NumberOfQuestions: stage1Req.NumberOfQuestions,
 		QuestionTypes:     stage1Req.QuestionTypes,
 		TimeLimit:         stage1Req.TimeLimit,
-		Status:            "draft_stage1",
+		Status:            models.QuizStatusDraftStage1,
 	}
 
 	createdQuiz, err := h.quizService.CreateQuiz(c, quiz)
@@ -175,7 +175,7 @@ func (h *QuizHandler) CompleteQuizStage2(c *gin.Context) {
 		return
 	}
 
-	if quiz.Status != "draft_stage1" {
+	if quiz.Status != models.QuizStatusDraftStage1 {
 		apiResponse.Error(c, errors.BadRequestError("Quiz is not in stage 1 draft status", nil))
 		return
 	}
@@ -214,7 +214,7 @@ func (h *QuizHandler) CompleteQuizStage2(c *gin.Context) {
 	quiz.Title = quizResult.Title
 	quiz.Topic = quizResult.Topic
 	quiz.Questions = quizResult.Questions
-	quiz.Status = "draft"
+	quiz.Status = models.QuizStatusDraft
 
 	updatedQuiz, err := h.quizService.UpdateQuiz(c, stage2Req.QuizID, quiz)
 	if err != nil {
