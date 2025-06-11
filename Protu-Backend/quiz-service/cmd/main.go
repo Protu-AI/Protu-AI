@@ -70,7 +70,6 @@ func main() {
 	router := gin.New()
 
 	router.Use(gin.Logger())
-	router.Use(middleware.CORSMiddleware())
 	router.Use(middleware.ErrorHandler())
 	router.Use(middleware.ValidationMiddleware())
 
