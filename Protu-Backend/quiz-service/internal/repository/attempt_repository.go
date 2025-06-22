@@ -305,6 +305,34 @@ func (r *AttemptRepository) GetAttemptsByQuizIDs(ctx context.Context, quizIDs []
 	return attempts, nil
 }
 
+// GetAttemptsByQuizID gets attempts for a single quiz ID
+func (r *AttemptRepository) GetAttemptsByQuizID(ctx context.Context, quizID string) ([]*models.QuizAttempt, error) {
+	objectID, err := primitive.ObjectIDFromHex(quizID)
+	if err != nil {
+		return nil, ErrInvalidID
+	}
+
+	filter := bson.M{
+		"quizId": objectID,
+	}
+
+	opts := options.Find().
+		SetSort(bson.M{"completedAt": -1})
+
+	cursor, err := r.collection.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, wrapError(err, "failed to find attempts by quiz ID")
+	}
+	defer cursor.Close(ctx)
+
+	attempts := make([]*models.QuizAttempt, 0, 10)
+	if err = cursor.All(ctx, &attempts); err != nil {
+		return nil, wrapError(err, "failed to decode attempts")
+	}
+
+	return attempts, nil
+}
+
 // GetAttemptStatsForUser gets aggregated stats for a user
 func (r *AttemptRepository) GetAttemptStatsForUser(ctx context.Context, userID string) (map[string]interface{}, error) {
 	pipeline := []bson.M{

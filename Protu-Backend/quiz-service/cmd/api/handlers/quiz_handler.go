@@ -241,3 +241,38 @@ func (h *QuizHandler) CompleteQuizStage2(c *gin.Context) {
 
 	apiResponse.QuizStageCompleted(c, 2, stage2Response)
 }
+
+func (h *QuizHandler) DeleteQuiz(c *gin.Context) {
+	quizID := c.Param("quizId")
+	if quizID == "" {
+		apiResponse.Error(c, errors.BadRequestError("Quiz ID is required", nil))
+		return
+	}
+
+	userID, err := middleware.GetUserIDFromContext(c)
+	if err != nil {
+		apiResponse.Error(c, errors.AuthenticationError("Failed to get user ID from token"))
+		return
+	}
+
+	err = h.quizService.DeleteQuiz(c, quizID, userID)
+	if err != nil {
+		switch err.Error() {
+		case "quiz not found":
+			apiResponse.Error(c, errors.NotFoundError("Quiz not found"))
+		case "you are not authorized to delete this quiz":
+			apiResponse.Error(c, errors.AuthorizationError("You are not authorized to delete this quiz"))
+		case "only draft quizzes can be deleted":
+			apiResponse.Error(c, errors.BadRequestError("Only draft quizzes can be deleted", nil))
+		case "cannot delete quiz that has attempts":
+			apiResponse.Error(c, errors.BadRequestError("Cannot delete quiz that has attempts", nil))
+		default:
+			apiResponse.Error(c, errors.InternalError("Failed to delete quiz: "+err.Error()))
+		}
+		return
+	}
+
+	apiResponse.OK(c, "Quiz deleted successfully", gin.H{
+		"quizId": quizID,
+	})
+}

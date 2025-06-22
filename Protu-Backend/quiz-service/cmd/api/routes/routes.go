@@ -38,6 +38,7 @@ func SetupRoutes(
 			quizzes.POST("/stage1", quizHandler.CreateQuizStage1)
 			quizzes.POST("/stage2", quizHandler.CompleteQuizStage2)
 			quizzes.PATCH("/:quizId/title", quizHandler.UpdateQuizTitle)
+			quizzes.DELETE("/:quizId", quizHandler.DeleteQuiz)
 		}
 
 		attempts := v1.Group("/attempts")

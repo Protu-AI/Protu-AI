@@ -248,7 +248,7 @@ func (r *QuizRepository) GetQuizzesByIDs(ctx context.Context, quizIDs []string) 
 	for _, id := range quizIDs {
 		objectID, err := primitive.ObjectIDFromHex(id)
 		if err != nil {
-			continue 
+			continue
 		}
 		objectIDs = append(objectIDs, objectID)
 	}
@@ -326,4 +326,24 @@ func (r *QuizRepository) GetQuizSummaryByID(ctx context.Context, id string) (*mo
 	}
 
 	return &quiz, nil
+}
+
+func (r *QuizRepository) DeleteQuiz(ctx context.Context, id string) error {
+	objectID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return ErrInvalidID
+	}
+
+	filter := bson.M{"_id": objectID}
+
+	result, err := r.collection.DeleteOne(ctx, filter)
+	if err != nil {
+		return wrapError(err, "failed to delete quiz")
+	}
+
+	if result.DeletedCount == 0 {
+		return ErrQuizNotFound
+	}
+
+	return nil
 }

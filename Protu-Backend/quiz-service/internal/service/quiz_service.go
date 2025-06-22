@@ -87,7 +87,7 @@ func (s *QuizService) ValidateStatusTransition(currentStatus, newStatus string) 
 		models.QuizStatusPublished:   {models.QuizStatusActive, models.QuizStatusArchived},
 		models.QuizStatusActive:      {models.QuizStatusCompleted, models.QuizStatusArchived},
 		models.QuizStatusCompleted:   {models.QuizStatusArchived},
-		models.QuizStatusArchived:    {}, 
+		models.QuizStatusArchived:    {},
 	}
 
 	allowedTransitions, exists := validTransitions[currentStatus]
@@ -138,7 +138,7 @@ func (s *QuizService) MarkQuizAsCompleted(ctx context.Context, quizID string) (*
 	}
 
 	if quiz.Status != models.QuizStatusActive {
-		return quiz, nil 
+		return quiz, nil
 	}
 
 	return s.TransitionQuizStatus(ctx, quizID, models.QuizStatusCompleted)
@@ -241,4 +241,34 @@ func (s *QuizService) validateQuiz(quiz *models.Quiz) error {
 	}
 
 	return nil
+}
+
+func (s *QuizService) DeleteQuiz(ctx context.Context, quizID string, userID string) error {
+	quiz, err := s.quizRepo.GetQuizByID(ctx, quizID)
+	if err != nil {
+		if errors.Is(err, repository.ErrQuizNotFound) {
+			return ErrQuizNotFound
+		}
+		return err
+	}
+
+	if quiz.UserID != userID {
+		return errors.New("you are not authorized to delete this quiz")
+	}
+
+	if quiz.Status != models.QuizStatusDraftStage1 && quiz.Status != models.QuizStatusDraft {
+		return errors.New("only draft quizzes can be deleted")
+	}
+
+	if s.attemptRepo != nil {
+		attempts, err := s.attemptRepo.GetAttemptsByQuizID(ctx, quizID)
+		if err != nil {
+			return err
+		}
+		if len(attempts) > 0 {
+			return errors.New("cannot delete quiz that has attempts")
+		}
+	}
+
+	return s.quizRepo.DeleteQuiz(ctx, quizID)
 }
