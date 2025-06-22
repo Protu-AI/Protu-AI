@@ -68,6 +68,12 @@ export function ChatListItem({
     }
   });
 
+  // Truncate chat title if longer than 30 chars
+  const truncatedTitle =
+    session.title.length > 30
+      ? session.title.slice(0, 27) + "..."
+      : session.title;
+
   return (
     <div className="relative">
       <DropdownMenu open={isMenuOpen}>
@@ -81,7 +87,7 @@ export function ChatListItem({
             onClick={handleItemClick}
             ref={listItemRef}
           >
-            <span className="truncate pr-8">{session.title}</span>
+            <span className="truncate pr-8">{truncatedTitle}</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" side="right">

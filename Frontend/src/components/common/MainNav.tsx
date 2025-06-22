@@ -12,7 +12,7 @@ export function MainNav({ className }: MainNavProps) {
     { href: '/', label: 'Home' },
     { href: '/chatbot', label: 'Chatbot' },
     { href: '/learn', label: 'Learn' }, // Updated label and href
-    { href: '/progress', label: 'Progress' },
+    { href: '/quizzes', label: 'Quizzes' },
     { href: '/resources', label: 'Resources' },
     { href: '/community', label: 'Community' },
     { href: '/about', label: 'About Us' },

@@ -1,6 +1,6 @@
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { MainLayout } from "@/layouts/MainLayout";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { cn } from "@/lib/utils";
 import { MessageCircle, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
@@ -10,6 +10,38 @@ import { useAuth } from "@/contexts/AuthContext";
 import { LessonChatWindow } from "@/components/LessonChatWindow";
 import { motion, AnimatePresence } from "framer-motion";
 import { config } from "@/../config";
+
+// New component for rendering HTML safely
+const HtmlRenderer = ({ htmlContent }: { htmlContent: string }) => {
+  const iframeRef = React.useRef<HTMLIFrameElement>(null);
+
+  useEffect(() => {
+    if (iframeRef.current) {
+      const iframe = iframeRef.current;
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (doc) {
+        doc.open();
+        // Sanitize content or use a library for more robust sanitization if needed
+        doc.write(`<!DOCTYPE html><html><body>${htmlContent}</body></html>`);
+        doc.close();
+      }
+    }
+  }, [htmlContent]);
+
+  return (
+    <iframe
+      ref={iframeRef}
+      title="code-output"
+      sandbox="allow-scripts allow-same-origin" // Restrict capabilities for security
+      className="w-full h-auto min-h-[100px] bg-[#FFFFFF] border-l-[8px] border-[#FFBF00] px-[32px] py-[12px] !mt-0 !mb-[24px]"
+    />
+  );
+};
+
+const LessonContext = React.createContext({
+  codeOutputs: {},
+  handleRunCode: (key: string, code: string, language: string) => {},
+});
 
 const components = {
   h3: ({ node, ...props }) => (
@@ -23,39 +55,62 @@ const components = {
   ),
   p: ({ node, ...props }) => (
     <p
-      className="font-['Archivo'] font-medium text-[16px] text-[#1C0B43] text-left leading-[1.2] mt-0 mb-[24px]"
+      className="font-['Archivo'] font-medium text-[16px] text-[#1C0B43] text-left leading-[1.8] mt-0 mb-[24px]" // Changed leading-[1.2] to leading-[1.6]
+      {...props}
+    />
+  ),
+  ul: ({ node, ...props }) => (
+    <ul
+      className="list-disc pl-6 mt-0 mb-[24px]" // Added list-disc and padding
+      {...props}
+    />
+  ),
+  ol: ({ node, ...props }) => (
+    <ol
+      className="list-decimal pl-6 mt-0 mb-[24px]" // Added list-decimal and padding
+      {...props}
+    />
+  ),
+  li: ({ node, ...props }) => (
+    <li
+      className="font-['Archivo'] text-[20px] text-[#1C0B43] leading-[1.6] mb-2 marker:text-[#5F24E0]" // Added leading, text color, and marker color
       {...props}
     />
   ),
   code: ({ node, inline, className, children, ...props }) => {
     const match = /language-(\w+)/.exec(className || "");
     const codeContent = String(children).replace(/\n$/, "");
-    const { codeOutputs, handleRunCode } = React.useContext(LessonContext);
+    const { codeOutputs, handleRunCode } = useContext(LessonContext);
     const codeKey = codeContent;
+    const language = match ? match[1] : "plaintext";
 
     if (!inline && match) {
       return (
         <div className="bg-[#EFE9FC] rounded-[8px] p-[24px] mt-0 mb-[24px]">
           <SyntaxHighlighter
             style={prism}
-            language={match[1]}
+            language={language}
             PreTag="div"
             className="!bg-[#FFFFFF] border-l-[8px] border-[#5F24E0] px-[32px] py-[12px] !mt-0 !mb-[24px]"
           >
-            {String(children).replace(/\n$/, "")}
+            {codeContent}
           </SyntaxHighlighter>
 
           {codeOutputs[codeKey] && (
             <div className="bg-[#EFE9FC] rounded-[8px] mt-0 mb-[24px]">
-              <div className="!bg-[#FFFFFF] border-l-[8px] border-[#FFBF00] px-[32px] py-[12px] font-['Archivo'] font-medium text-[16px] text-[#1C0B43] text-left leading-[1.2]">
-                {codeOutputs[codeKey]}
-              </div>
+              {language === "html" ? (
+                <HtmlRenderer htmlContent={codeOutputs[codeKey]} />
+              ) : (
+                <div className="!bg-[#FFFFFF] border-l-[8px] border-[#FFBF00] px-[32px] py-[12px] font-['Archivo'] font-medium text-[16px] text-[#1C0B43] text-left leading-[1.2]">
+                  {codeOutputs[codeKey]}
+                </div>
+              )}
             </div>
           )}
 
           <button
             className="bg-[#5F24E0] text-[#EFE9FC] font-['Archivo'] text-[18px] font-semibold rounded-[16px] py-[12px] px-[24px] transition-colors duration-200 hover:bg-[#9F7CEC]"
-            onClick={() => handleRunCode(codeKey, codeContent)}
+            onClick={() => handleRunCode(codeKey, codeContent, language)}
           >
             Run
           </button>
@@ -70,11 +125,6 @@ const components = {
     }
   },
 };
-
-const LessonContext = React.createContext({
-  codeOutputs: {},
-  handleRunCode: (key: string, code: string) => {},
-});
 
 const LessonPage = () => {
   const { lessonId } = useParams();
@@ -164,11 +214,64 @@ const LessonPage = () => {
     navigate(courseName ? `/course/${courseName}` : "/");
   };
 
-  const handleRunCode = (key: string, code: string) => {
-    setTimeout(() => {
-      const simulatedOutput = `Output for:\n${code.substring(0, 50)}...`;
-      setCodeOutputs((prev) => ({ ...prev, [key]: simulatedOutput }));
-    }, 1000);
+  const handleRunCode = async (key: string, code: string, language: string) => {
+    if (language === "html") {
+      // For HTML, directly render in the output area
+      setCodeOutputs((prev) => ({ ...prev, [key]: code }));
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setCodeOutputs((prev) => ({
+        ...prev,
+        [key]: "Error: Not authenticated. Please log in to run code.",
+      }));
+      return;
+    }
+
+    if (user?.userName === "Guest") {
+      setCodeOutputs((prev) => ({
+        ...prev,
+        [key]: "Error: Guest users cannot execute code. Please log in.",
+      }));
+      return;
+    }
+
+    setCodeOutputs((prev) => ({ ...prev, [key]: "Running code..." }));
+    try {
+      const response = await fetch(`${config.apiUrl}/v1/execute`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          source_code: code,
+          language: language,
+          input: "", // You can add input if your API supports it
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to execute code");
+      }
+
+      const data = await response.json();
+      setCodeOutputs((prev) => ({
+        ...prev,
+        [key]: data.output || "No output",
+      }));
+    } catch (err) {
+      setCodeOutputs((prev) => ({
+        ...prev,
+        [key]: `Error: ${
+          err instanceof Error ? err.message : "An unknown error occurred."
+        }`,
+      }));
+      console.error("Error executing code:", err);
+    }
   };
 
   const closedPosition = { right: "128px", top: "144px" };

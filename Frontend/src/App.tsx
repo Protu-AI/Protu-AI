@@ -13,13 +13,11 @@ import { Learn } from "./pages/Learn";
 import { Path } from "./pages/Path";
 import CoursePage from "./pages/CoursePage";
 import LessonPage from "./pages/LessonPage";
+import { Quizzes } from "./pages/Quizzes";
+import { QuizGenerator } from "./pages/Quizzes/QuizGenerator";
 import { ChatProvider } from "./contexts/ChatContext"; // Import ChatProvider here
 
 export default function App() {
-  const handleSendMessage = (content: string) => {
-    console.log("Sending message:", content);
-  };
-
   return (
     <div className="bg-light dark:bg-dark text-light dark:text-dark min-h-screen">
       <Routes>
@@ -40,7 +38,7 @@ export default function App() {
               {" "}
               {/* Wrap ChatLayout */}
               <MainLayout>
-                <ChatLayout onSendMessage={handleSendMessage} />
+                <ChatLayout />
               </MainLayout>
             </ChatProvider>
           }
@@ -57,6 +55,8 @@ export default function App() {
         />
 
         <Route path="/learn" element={<Learn />} />
+        <Route path="/quizzes" element={<Quizzes />} />
+        <Route path="/quizzes/generate" element={<QuizGenerator />} />
         <Route path="/path/:pathName" element={<Path />} />
         <Route path="/course/:courseName" element={<CoursePage />} />
       </Routes>

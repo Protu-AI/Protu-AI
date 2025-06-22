@@ -40,7 +40,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "2.1.0",
     "date-fns": "3.3.1",
-    "framer-motion": "11.0.3",
+    "framer-motion": "^11.0.3",
     "lodash": "4.17.21",
     "lucide-react": "0.330.0",
     "next-themes": "0.2.1",
@@ -48,7 +48,8 @@
     "react-dom": "18.2.0",
     "react-markdown": "^10.1.0",
     "react-router-dom": "6.22.0",
-    "react-syntax-highlighter": "^15.5.0",
+    "react-syntax-highlighter": "^15.6.1",
+    "remark-gfm": "^4.0.1",
     "tailwind-merge": "2.2.1"
   },
   "devDependencies": {
