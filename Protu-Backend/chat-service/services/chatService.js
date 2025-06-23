@@ -141,10 +141,45 @@ const deleteChat = async (chatId, userId) => {
   return result;
 };
 
+const updateChatName = async (chatId, userId, newName) => {
+  try {
+    if (!newName || newName.trim() === '') {
+      throw new ValidationError('Chat name is required');
+    }
+
+    const trimmedName = newName.trim();
+    if (trimmedName.length > 100) {
+      throw new ValidationError('Chat name cannot exceed 100 characters');
+    }
+
+    await verifyOwnership(chatId, userId);
+
+    const updatedChat = await prisma.chat.update({
+      where: { id: chatId },
+      data: {
+        name: trimmedName,
+        updatedAt: new Date()
+      }
+    });
+
+    return updatedChat;
+  } catch (error) {
+    if (
+      error instanceof ValidationError ||
+      error instanceof NotFoundError ||
+      error instanceof UnauthorizedError
+    ) {
+      throw error;
+    }
+    throw new DatabaseError('Failed to update chat name');
+  }
+};
+
 module.exports = {
   createChat,
   getUserChats,
   deleteChat,
   getSingleChat,
-  verifyOwnership
+  verifyOwnership,
+  updateChatName
 };
