@@ -130,6 +130,7 @@ const createMessageWithAutoChat = asyncWrapper(async (req, res) => {
         'CREATED',
         {
           chatId: targetChatId,
+          chatName: chat.name,
           userMessage,
           aiMessage
         },
@@ -143,6 +144,7 @@ const createMessageWithAutoChat = asyncWrapper(async (req, res) => {
         'ERROR',
         {
           chatId: targetChatId,
+          chatName: chat.name,
           userMessage
         },
         'Failed to get AI response'
