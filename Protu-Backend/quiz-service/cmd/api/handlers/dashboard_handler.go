@@ -40,9 +40,10 @@ func (h *DashboardHandler) GetDashboardSummary(c *gin.Context) {
 	}
 
 	summaryResponse := response.DashboardSummaryResponse{
-		TotalQuizzes: summary.TotalQuizzes,
-		AverageScore: summary.AverageScore,
-		SuccessRate:  summary.SuccessRate,
+		TotalQuizzes:   summary.TotalQuizzes,
+		AverageScore:   summary.AverageScore,
+		SuccessRate:    summary.SuccessRate,
+		DraftedQuizzes: summary.DraftedQuizzes,
 	}
 
 	apiResponse.OK(c, "Dashboard summary retrieved successfully", summaryResponse)

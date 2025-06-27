@@ -28,9 +28,10 @@ type QuizList struct {
 }
 
 type DashboardSummary struct {
-	TotalQuizzes int     `json:"totalQuizzes"`
-	AverageScore float64 `json:"averageScore"`
-	SuccessRate  float64 `json:"successRate"`
+	TotalQuizzes   int     `json:"totalQuizzes"`
+	AverageScore   float64 `json:"averageScore"`
+	SuccessRate    float64 `json:"successRate"`
+	DraftedQuizzes int     `json:"draftedQuizzes"`
 }
 
 type PaginationMetadata struct {
@@ -101,14 +102,40 @@ func (s *DashboardService) GetDashboardSummary(ctx context.Context, userID strin
 		return nil, err
 	}
 
+	draftStatuses := []string{models.QuizStatusDraftStage1, models.QuizStatusDraft}
+	draftQuizzes, _, err := s.quizRepo.GetQuizzesByUserIDAndStatusesPaginated(ctx, userID, draftStatuses, 1, 1000) // Get all draft quizzes
+	if err != nil {
+		return nil, err
+	}
+
+	attempts, err := s.attemptRepo.GetAttemptsByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	attemptedQuizIDs := make(map[string]bool)
+	for _, attempt := range attempts {
+		if attempt.Status == models.AttemptStatusCompleted {
+			attemptedQuizIDs[attempt.QuizID.Hex()] = true
+		}
+	}
+
+	draftedQuizzesCount := 0
+	for _, quiz := range draftQuizzes {
+		if !attemptedQuizIDs[quiz.ID.Hex()] {
+			draftedQuizzesCount++
+		}
+	}
+
 	totalQuizzes := int(convertToFloat64(stats["totalQuizzes"])) + len(activeQuizzes)
 	averageScore := convertToFloat64(stats["averageScore"])
 	successRate := convertToFloat64(stats["successRate"])
 
 	return &DashboardSummary{
-		TotalQuizzes: totalQuizzes,
-		AverageScore: averageScore,
-		SuccessRate:  successRate,
+		TotalQuizzes:   totalQuizzes,
+		AverageScore:   averageScore,
+		SuccessRate:    successRate,
+		DraftedQuizzes: draftedQuizzesCount,
 	}, nil
 }
 
