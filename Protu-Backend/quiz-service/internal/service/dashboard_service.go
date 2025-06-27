@@ -92,44 +92,56 @@ func convertToFloat64(value interface{}) float64 {
 }
 
 func (s *DashboardService) GetDashboardSummary(ctx context.Context, userID string) (*DashboardSummary, error) {
-	stats, err := s.attemptRepo.GetAttemptStatsForUser(ctx, userID)
+	// Get the best attempts per quiz to calculate unique quiz statistics
+	passedAttempts, _, err := s.attemptRepo.GetBestAttemptsByUserIDWithPagination(
+		ctx, userID, nil, 1, 1000, "completedAt", "desc", // Get all attempts without pagination
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	activeQuizzes, _, err := s.quizRepo.GetQuizzesByUserIDAndStatusPaginated(ctx, userID, models.QuizStatusActive, 1, 1)
-	if err != nil {
-		return nil, err
-	}
+	// Calculate statistics from best attempts per quiz
+	totalQuizzes := len(passedAttempts)
+	passedCount := 0
+	totalScore := 0.0
 
-	draftStatuses := []string{models.QuizStatusDraftStage1, models.QuizStatusDraft}
-	draftQuizzes, _, err := s.quizRepo.GetQuizzesByUserIDAndStatusesPaginated(ctx, userID, draftStatuses, 1, 1000) // Get all draft quizzes
-	if err != nil {
-		return nil, err
-	}
-
-	attempts, err := s.attemptRepo.GetAttemptsByUserID(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	attemptedQuizIDs := make(map[string]bool)
-	for _, attempt := range attempts {
-		if attempt.Status == models.AttemptStatusCompleted {
-			attemptedQuizIDs[attempt.QuizID.Hex()] = true
+	for _, attempt := range passedAttempts {
+		totalScore += attempt.Score
+		if attempt.Passed {
+			passedCount++
 		}
 	}
 
+	averageScore := 0.0
+	if totalQuizzes > 0 {
+		averageScore = totalScore / float64(totalQuizzes)
+	}
+
+	successRate := 0.0
+	if totalQuizzes > 0 {
+		successRate = float64(passedCount) / float64(totalQuizzes) * 100
+	}
+
+	// Get draft quizzes that haven't been attempted
+	draftStatuses := []string{models.QuizStatusDraftStage1, models.QuizStatusDraft}
+	draftQuizzes, _, err := s.quizRepo.GetQuizzesByUserIDAndStatusesPaginated(ctx, userID, draftStatuses, 1, 1000)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create map of attempted quiz IDs
+	attemptedQuizIDs := make(map[string]bool)
+	for _, attempt := range passedAttempts {
+		attemptedQuizIDs[attempt.QuizID.Hex()] = true
+	}
+
+	// Count draft quizzes that haven't been attempted
 	draftedQuizzesCount := 0
 	for _, quiz := range draftQuizzes {
 		if !attemptedQuizIDs[quiz.ID.Hex()] {
 			draftedQuizzesCount++
 		}
 	}
-
-	totalQuizzes := int(convertToFloat64(stats["totalQuizzes"])) + len(activeQuizzes)
-	averageScore := convertToFloat64(stats["averageScore"])
-	successRate := convertToFloat64(stats["successRate"])
 
 	return &DashboardSummary{
 		TotalQuizzes:   totalQuizzes,

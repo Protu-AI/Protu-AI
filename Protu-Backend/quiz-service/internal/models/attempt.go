@@ -10,6 +10,7 @@ const (
 	AttemptStatusInProgress = "in_progress"
 	AttemptStatusCompleted  = "completed"
 	AttemptStatusAbandoned  = "abandoned"
+	AttemptStatusAutoFailed = "auto_failed"
 )
 
 type QuizAttempt struct {

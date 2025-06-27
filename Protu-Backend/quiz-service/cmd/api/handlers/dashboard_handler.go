@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"protu.ai/quiz-service/internal/dto/response"
@@ -72,11 +73,14 @@ func (h *DashboardHandler) GetPassedQuizzes(c *gin.Context) {
 
 	quizResponses := make([]response.QuizSummaryResponse, 0, len(quizzesList.Quizzes))
 	for _, quiz := range quizzesList.Quizzes {
+		dateTaken, _ := time.Parse("2006-01-02T15:04:05Z", quiz.DateTaken)
+
 		quizResponses = append(quizResponses, response.QuizSummaryResponse{
 			ID:        quiz.ID,
 			Title:     quiz.Title,
 			Topic:     quiz.Topic,
 			Score:     quiz.Score,
+			DateTaken: dateTaken,
 			TimeTaken: quiz.TimeTaken,
 		})
 	}
@@ -119,11 +123,14 @@ func (h *DashboardHandler) GetFailedQuizzes(c *gin.Context) {
 
 	quizResponses := make([]response.QuizSummaryResponse, 0, len(quizzesList.Quizzes))
 	for _, quiz := range quizzesList.Quizzes {
+		dateTaken, _ := time.Parse("2006-01-02T15:04:05Z", quiz.DateTaken)
+
 		quizResponses = append(quizResponses, response.QuizSummaryResponse{
 			ID:        quiz.ID,
 			Title:     quiz.Title,
 			Topic:     quiz.Topic,
 			Score:     quiz.Score,
+			DateTaken: dateTaken,
 			TimeTaken: quiz.TimeTaken,
 		})
 	}
@@ -166,11 +173,14 @@ func (h *DashboardHandler) GetDraftQuizzes(c *gin.Context) {
 
 	quizResponses := make([]response.QuizSummaryResponse, 0, len(quizzesList.Quizzes))
 	for _, quiz := range quizzesList.Quizzes {
+		dateTaken, _ := time.Parse("2006-01-02T15:04:05Z", quiz.DateTaken)
+
 		quizResponses = append(quizResponses, response.QuizSummaryResponse{
 			ID:        quiz.ID,
 			Title:     quiz.Title,
 			Topic:     quiz.Topic,
 			Score:     quiz.Score,
+			DateTaken: dateTaken,
 			TimeTaken: quiz.TimeTaken,
 		})
 	}

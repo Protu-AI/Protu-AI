@@ -137,6 +137,7 @@ func (r *AttemptRepository) findAttempts(ctx context.Context, filter bson.M, opt
 
 // GetBestAttemptsByUserIDWithPagination gets the best attempt per quiz for a user with pagination
 func (r *AttemptRepository) GetBestAttemptsByUserIDWithPagination(ctx context.Context, userID string, passed *bool, page, pageSize int, sortBy, sortOrder string) ([]*models.QuizAttempt, int64, error) {
+	// First stage: match user's completed attempts (no passed filter yet)
 	matchStage := bson.M{
 		"$match": bson.M{
 			"userId": userID,
@@ -144,12 +145,7 @@ func (r *AttemptRepository) GetBestAttemptsByUserIDWithPagination(ctx context.Co
 		},
 	}
 
-	// Add passed filter if specified
-	if passed != nil {
-		matchStage["$match"].(bson.M)["passed"] = *passed
-	}
-
-	// Group by quizId to get the best attempt per quiz
+	// Group by quizId to get the best attempt per quiz (find best first, then filter)
 	groupStage := bson.M{
 		"$group": bson.M{
 			"_id":      "$quizId",
@@ -157,7 +153,7 @@ func (r *AttemptRepository) GetBestAttemptsByUserIDWithPagination(ctx context.Co
 		},
 	}
 
-	// Add a stage to get the best attempt from the array
+	// Add a stage to get the best attempt from the array (highest score wins)
 	addFieldsStage := bson.M{
 		"$addFields": bson.M{
 			"bestAttempt": bson.M{
@@ -193,6 +189,16 @@ func (r *AttemptRepository) GetBestAttemptsByUserIDWithPagination(ctx context.Co
 		},
 	}
 
+	// NOW filter by passed status after finding best attempts
+	var filterByPassedStage bson.M
+	if passed != nil {
+		filterByPassedStage = bson.M{
+			"$match": bson.M{
+				"passed": *passed,
+			},
+		}
+	}
+
 	// Sort stage
 	sortStage := bson.M{
 		"$sort": bson.M{},
@@ -214,24 +220,31 @@ func (r *AttemptRepository) GetBestAttemptsByUserIDWithPagination(ctx context.Co
 		sortStage["$sort"].(bson.M)["completedAt"] = -1
 	}
 
-	// Count pipeline for total
+	// Build count pipeline
 	countPipeline := []bson.M{
 		matchStage,
 		groupStage,
 		addFieldsStage,
-		{"$count": "total"},
+		replaceRootStage,
 	}
+	if passed != nil {
+		countPipeline = append(countPipeline, filterByPassedStage)
+	}
+	countPipeline = append(countPipeline, bson.M{"$count": "total"})
 
-	// Main pipeline with pagination
+	// Build main pipeline with pagination
 	pipeline := []bson.M{
 		matchStage,
 		groupStage,
 		addFieldsStage,
 		replaceRootStage,
-		sortStage,
-		{"$skip": (page - 1) * pageSize},
-		{"$limit": pageSize},
 	}
+	if passed != nil {
+		pipeline = append(pipeline, filterByPassedStage)
+	}
+	pipeline = append(pipeline, sortStage)
+	pipeline = append(pipeline, bson.M{"$skip": (page - 1) * pageSize})
+	pipeline = append(pipeline, bson.M{"$limit": pageSize})
 
 	// Get total count
 	countCursor, err := r.collection.Aggregate(ctx, countPipeline)
@@ -344,53 +357,19 @@ func (r *AttemptRepository) GetAttemptStatsForUser(ctx context.Context, userID s
 		},
 		{
 			"$group": bson.M{
-				"_id":       "$quizId",
-				"bestScore": bson.M{"$max": "$score"},
-				"passed": bson.M{
-					"$max": bson.M{
-						"$cond": bson.M{
-							"if":   "$passed",
-							"then": 1,
-							"else": 0,
+				"_id":           nil,
+				"totalAttempts": bson.M{"$sum": 1},
+				"passedAttempts": bson.M{
+					"$sum": bson.M{
+						"$cond": []interface{}{
+							"$passed",
+							1,
+							0,
 						},
 					},
 				},
-			},
-		},
-		{
-			"$group": bson.M{
-				"_id":          nil,
-				"totalQuizzes": bson.M{"$sum": 1},
-				"averageScore": bson.M{"$avg": "$bestScore"},
-				"passedCount":  bson.M{"$sum": "$passed"},
-			},
-		},
-		{
-			"$project": bson.M{
-				"_id": 0,
-				"totalQuizzes": bson.M{
-					"$toDouble": "$totalQuizzes",
-				},
-				"averageScore": bson.M{
-					"$ifNull": []interface{}{
-						bson.M{"$toDouble": "$averageScore"},
-						0.0,
-					},
-				},
-				"passedCount": bson.M{
-					"$toDouble": "$passedCount",
-				},
-				"successRate": bson.M{
-					"$ifNull": []interface{}{
-						bson.M{
-							"$multiply": []interface{}{
-								bson.M{"$divide": []interface{}{"$passedCount", "$totalQuizzes"}},
-								100.0,
-							},
-						},
-						0.0,
-					},
-				},
+				"averageScore":   bson.M{"$avg": "$score"},
+				"totalTimeTaken": bson.M{"$sum": "$timeTaken"},
 			},
 		},
 	}
@@ -401,19 +380,66 @@ func (r *AttemptRepository) GetAttemptStatsForUser(ctx context.Context, userID s
 	}
 	defer cursor.Close(ctx)
 
-	var results []bson.M
+	var results []map[string]interface{}
 	if err = cursor.All(ctx, &results); err != nil {
 		return nil, wrapError(err, "failed to decode attempt stats")
 	}
 
 	if len(results) == 0 {
 		return map[string]interface{}{
-			"totalQuizzes": 0.0,
-			"averageScore": 0.0,
-			"passedCount":  0.0,
-			"successRate":  0.0,
+			"totalAttempts":  0,
+			"passedAttempts": 0,
+			"averageScore":   0.0,
+			"totalTimeTaken": 0,
 		}, nil
 	}
 
-	return results[0], nil
+	stats := results[0]
+	if stats["averageScore"] == nil {
+		stats["averageScore"] = 0.0
+	}
+
+	return stats, nil
+}
+
+// GetExpiredInProgressAttempts finds attempts that are in progress but have exceeded their time limit
+func (r *AttemptRepository) GetExpiredInProgressAttempts(ctx context.Context) ([]*models.QuizAttempt, error) {
+	filter := bson.M{
+		"status": models.AttemptStatusInProgress,
+	}
+
+	opts := options.Find()
+
+	attempts, err := r.findAttempts(ctx, filter, opts, "failed to find in-progress attempts")
+	if err != nil {
+		return nil, err
+	}
+
+	return attempts, nil
+}
+
+// AutoFailAttempt automatically fails an attempt by setting score to 0 and status to completed
+func (r *AttemptRepository) AutoFailAttempt(ctx context.Context, attemptID primitive.ObjectID) error {
+	now := time.Now()
+
+	update := bson.M{
+		"$set": bson.M{
+			"answers":     []models.Answer{},
+			"score":       0.0,
+			"passed":      false,
+			"completedAt": now,
+			"status":      models.AttemptStatusCompleted,
+		},
+	}
+
+	result, err := r.collection.UpdateOne(ctx, bson.M{"_id": attemptID}, update)
+	if err != nil {
+		return wrapError(err, "failed to auto-fail attempt")
+	}
+
+	if result.MatchedCount == 0 {
+		return ErrAttemptNotFound
+	}
+
+	return nil
 }
