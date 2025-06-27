@@ -46,7 +46,6 @@ func main() {
 	dashboardService := service.NewDashboardService(quizRepo, attemptRepo)
 	aiService := service.NewAIService(&cfg)
 
-	// Initialize auto-fail service for handling expired quiz attempts
 	autoFailService := service.NewAutoFailService(attemptRepo, quizRepo)
 
 	rabbitmqURL := cfg.RabbitMQURL
@@ -78,7 +77,6 @@ func main() {
 
 	routes.SetupRoutes(router, &cfg, quizHandler, attemptHandler, dashboardHandler)
 
-	// Start the auto-fail service to monitor expired quiz attempts
 	appCtx := context.Background()
 	autoFailService.StartAutoFailChecker(appCtx)
 	defer autoFailService.StopAutoFailChecker()

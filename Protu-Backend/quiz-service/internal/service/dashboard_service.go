@@ -92,7 +92,6 @@ func convertToFloat64(value interface{}) float64 {
 }
 
 func (s *DashboardService) GetDashboardSummary(ctx context.Context, userID string) (*DashboardSummary, error) {
-	// Get the best attempts per quiz to calculate unique quiz statistics
 	passedAttempts, _, err := s.attemptRepo.GetBestAttemptsByUserIDWithPagination(
 		ctx, userID, nil, 1, 1000, "completedAt", "desc", // Get all attempts without pagination
 	)
@@ -100,7 +99,6 @@ func (s *DashboardService) GetDashboardSummary(ctx context.Context, userID strin
 		return nil, err
 	}
 
-	// Calculate statistics from best attempts per quiz
 	totalQuizzes := len(passedAttempts)
 	passedCount := 0
 	totalScore := 0.0
@@ -122,20 +120,17 @@ func (s *DashboardService) GetDashboardSummary(ctx context.Context, userID strin
 		successRate = float64(passedCount) / float64(totalQuizzes) * 100
 	}
 
-	// Get draft quizzes that haven't been attempted
 	draftStatuses := []string{models.QuizStatusDraftStage1, models.QuizStatusDraft}
 	draftQuizzes, _, err := s.quizRepo.GetQuizzesByUserIDAndStatusesPaginated(ctx, userID, draftStatuses, 1, 1000)
 	if err != nil {
 		return nil, err
 	}
 
-	// Create map of attempted quiz IDs
 	attemptedQuizIDs := make(map[string]bool)
 	for _, attempt := range passedAttempts {
 		attemptedQuizIDs[attempt.QuizID.Hex()] = true
 	}
 
-	// Count draft quizzes that haven't been attempted
 	draftedQuizzesCount := 0
 	for _, quiz := range draftQuizzes {
 		if !attemptedQuizIDs[quiz.ID.Hex()] {

@@ -137,7 +137,6 @@ func (r *AttemptRepository) findAttempts(ctx context.Context, filter bson.M, opt
 
 // GetBestAttemptsByUserIDWithPagination gets the best attempt per quiz for a user with pagination
 func (r *AttemptRepository) GetBestAttemptsByUserIDWithPagination(ctx context.Context, userID string, passed *bool, page, pageSize int, sortBy, sortOrder string) ([]*models.QuizAttempt, int64, error) {
-	// First stage: match user's completed attempts (no passed filter yet)
 	matchStage := bson.M{
 		"$match": bson.M{
 			"userId": userID,
@@ -145,7 +144,6 @@ func (r *AttemptRepository) GetBestAttemptsByUserIDWithPagination(ctx context.Co
 		},
 	}
 
-	// Group by quizId to get the best attempt per quiz (find best first, then filter)
 	groupStage := bson.M{
 		"$group": bson.M{
 			"_id":      "$quizId",
@@ -153,7 +151,6 @@ func (r *AttemptRepository) GetBestAttemptsByUserIDWithPagination(ctx context.Co
 		},
 	}
 
-	// Add a stage to get the best attempt from the array (highest score wins)
 	addFieldsStage := bson.M{
 		"$addFields": bson.M{
 			"bestAttempt": bson.M{
@@ -182,14 +179,12 @@ func (r *AttemptRepository) GetBestAttemptsByUserIDWithPagination(ctx context.Co
 		},
 	}
 
-	// Replace root with the best attempt
 	replaceRootStage := bson.M{
 		"$replaceRoot": bson.M{
 			"newRoot": "$bestAttempt",
 		},
 	}
 
-	// NOW filter by passed status after finding best attempts
 	var filterByPassedStage bson.M
 	if passed != nil {
 		filterByPassedStage = bson.M{
@@ -199,7 +194,6 @@ func (r *AttemptRepository) GetBestAttemptsByUserIDWithPagination(ctx context.Co
 		}
 	}
 
-	// Sort stage
 	sortStage := bson.M{
 		"$sort": bson.M{},
 	}
@@ -220,7 +214,6 @@ func (r *AttemptRepository) GetBestAttemptsByUserIDWithPagination(ctx context.Co
 		sortStage["$sort"].(bson.M)["completedAt"] = -1
 	}
 
-	// Build count pipeline
 	countPipeline := []bson.M{
 		matchStage,
 		groupStage,
@@ -232,7 +225,6 @@ func (r *AttemptRepository) GetBestAttemptsByUserIDWithPagination(ctx context.Co
 	}
 	countPipeline = append(countPipeline, bson.M{"$count": "total"})
 
-	// Build main pipeline with pagination
 	pipeline := []bson.M{
 		matchStage,
 		groupStage,
@@ -246,7 +238,6 @@ func (r *AttemptRepository) GetBestAttemptsByUserIDWithPagination(ctx context.Co
 	pipeline = append(pipeline, bson.M{"$skip": (page - 1) * pageSize})
 	pipeline = append(pipeline, bson.M{"$limit": pageSize})
 
-	// Get total count
 	countCursor, err := r.collection.Aggregate(ctx, countPipeline)
 	if err != nil {
 		return nil, 0, wrapError(err, "failed to count best attempts")
@@ -265,7 +256,6 @@ func (r *AttemptRepository) GetBestAttemptsByUserIDWithPagination(ctx context.Co
 		}
 	}
 
-	// Get paginated results
 	cursor, err := r.collection.Aggregate(ctx, pipeline)
 	if err != nil {
 		return nil, 0, wrapError(err, "failed to find best attempts")
@@ -286,7 +276,7 @@ func (r *AttemptRepository) GetAttemptsByQuizIDs(ctx context.Context, quizIDs []
 	for _, id := range quizIDs {
 		objectID, err := primitive.ObjectIDFromHex(id)
 		if err != nil {
-			continue // Skip invalid IDs
+			continue
 		}
 		objectIDs = append(objectIDs, objectID)
 	}
