@@ -3,6 +3,7 @@ package org.protu.notificationservice.service;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import org.protu.notificationservice.dto.EmailData;
+import org.protu.notificationservice.helper.EmailVerificationTemplateProcessor;
 import org.protu.notificationservice.helper.TemplateProcessor;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -32,6 +33,8 @@ public class EmailService {
   public void prepareAndSendEmail(EmailData emailData, TemplateProcessor templateProcessor) throws MessagingException {
     Map<String, Object> variables = templateProcessor.getVariables(emailData);
     String htmlBody = templateProcessor.loadTemplate(variables);
-    sendEmail(emailData.to(), "Verify your email", htmlBody);
+    final String subject = templateProcessor instanceof EmailVerificationTemplateProcessor ?
+        "Verify your email" : "Reset your Protu password";
+    sendEmail(emailData.to(), subject, htmlBody);
   }
 }

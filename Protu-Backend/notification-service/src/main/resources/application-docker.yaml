@@ -5,8 +5,8 @@ spring:
     username: ${MAIL_USERNAME}
     password: ${MAIL_PASSWORD}
     properties.mail.smtp:
-      ssl.enable: ${MAIL_SMTP_SSL_ENABLE}
-      starttls.enable: ${MAIL_SMTP_STARTTLS_ENABLE}
+      auth: true
+      starttls.enable: true
 
   rabbitmq:
     host: ${RABBITMQ_HOST}
