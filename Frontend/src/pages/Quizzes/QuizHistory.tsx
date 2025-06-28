@@ -58,6 +58,10 @@ export function QuizHistory() {
     });
   };
 
+  const handleStartQuiz = (draftId: string) => {
+    navigate(`/quizzes/take/${draftId}`);
+  };
+
   // Fetch dashboard summary
   const fetchSummary = async () => {
     try {
@@ -82,8 +86,8 @@ export function QuizHistory() {
       const data = await response.json();
       setSummaryData({
         totalQuizzes: data.data.totalQuizzes,
-        averageScore: data.data.averageScore,
-        successRate: data.data.successRate,
+        averageScore: Math.round(parseFloat(data.data.averageScore) * 10) / 10,
+        successRate: Math.round(parseFloat(data.data.successRate) * 10) / 10,
       });
     } catch (err) {
       setError("Failed to load dashboard summary");
@@ -119,7 +123,7 @@ export function QuizHistory() {
         topic: quiz.topic,
         duration: formatDuration(quiz.timeTaken),
         date: formatDate(quiz.dateTaken),
-        score: quiz.score,
+        score: Math.round(parseFloat(quiz.score) * 10) / 10,
         status: "passed" as const,
       }));
       setPassedQuizzes(formattedQuizzes);
@@ -157,7 +161,7 @@ export function QuizHistory() {
         topic: quiz.topic,
         duration: formatDuration(quiz.timeTaken),
         date: formatDate(quiz.dateTaken),
-        score: quiz.score,
+        score: Math.round(parseFloat(quiz.score) * 10) / 10,
         status: "failed" as const,
       }));
       setFailedQuizzes(formattedQuizzes);
@@ -199,6 +203,47 @@ export function QuizHistory() {
     } catch (err) {
       setError("Failed to load draft quizzes");
       console.error(err);
+    }
+  };
+
+  // Delete a draft quiz
+  const handleDeleteDraft = async (quizId: string, quizTitle: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error("No authentication token found. Please log in.");
+      }
+
+      // Confirmation dialog before deleting (replace with custom modal if needed)
+      if (!window.confirm(`Are you sure you want to delete "${quizTitle}"?`)) {
+        return;
+      }
+
+      const response = await fetch(`${config.apiUrl}/v1/quizzes/${quizId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ title: quizTitle }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to delete draft quiz.");
+      }
+
+      const data = await response.json();
+      console.log("Delete successful:", data.message);
+      // Optionally, refresh the draft quizzes list or remove the deleted quiz from state
+      setDraftQuizzes((prevDrafts) =>
+        prevDrafts.filter((draft) => draft.id !== quizId)
+      );
+      // You might also want to refetch the summary data if it's affected
+      fetchSummary();
+    } catch (err: any) {
+      console.error("Error deleting draft quiz:", err.message);
+      setError(`Error deleting quiz: ${err.message}`); // Set a user-friendly error message
     }
   };
 
@@ -312,7 +357,7 @@ export function QuizHistory() {
 
           {/* Generate New Quiz Button */}
           <button
-            onClick={() => navigate('/quizzes/generate')}
+            onClick={() => navigate("/quizzes/generate")}
             className="text-[#EFE9FC] font-['Archivo'] text-[28px] font-semibold rounded-[24px] py-[24px] px-[64px] transition-all duration-200 flex items-center gap-[16px] group hover:shadow-[inset_0px_0px_9px_#FFFFFF,_0px_6px_38px_#FFBF0036,_0_0_0_3px_#FFBF0080]"
             style={{
               background: "radial-gradient(circle, #BFA7F3 0%, #5F24E0 100%)",
@@ -1021,14 +1066,22 @@ export function QuizHistory() {
                       {/* Right Side - Start and Delete Buttons */}
                       <div className="flex items-center gap-[24px]">
                         {/* Start Button */}
-                        <button className="py-[12px] px-[24px] rounded-[16px] bg-[#EFE9FC] hover:bg-[#9F7CEC] transition-colors duration-200 group">
+                        <button
+                          onClick={() => handleStartQuiz(draft.id)}
+                          className="py-[12px] px-[24px] rounded-[16px] bg-[#EFE9FC] hover:bg-[#9F7CEC] transition-colors duration-200 group"
+                        >
                           <span className="font-['Archivo'] text-[16px] font-semibold text-center text-[#5F24E0] group-hover:text-[#EFE9FC]">
                             Start
                           </span>
                         </button>
 
                         {/* Delete Button */}
-                        <button className="p-[12px] rounded-[16px] bg-[#EFE9FC] hover:bg-[#9F7CEC] transition-colors duration-200 group">
+                        <button
+                          onClick={() =>
+                            handleDeleteDraft(draft.id, draft.title)
+                          }
+                          className="p-[12px] rounded-[16px] bg-[#EFE9FC] hover:bg-[#9F7CEC] transition-colors duration-200 group"
+                        >
                           <svg
                             width="22"
                             height="22"

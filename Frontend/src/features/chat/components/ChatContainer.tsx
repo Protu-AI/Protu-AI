@@ -16,7 +16,7 @@ export function ChatContainer({ messages }: ChatContainerProps) {
 
   return (
     <ScrollArea className="flex-1">
-      <div className="flex flex-col divide-y">
+      <div className="flex flex-col divide-y pl-4">
         {messages.map((message) => (
           <ChatMessage key={message.id} message={message} />
         ))}
