@@ -759,7 +759,7 @@ export function QuizGenerator() {
   interface QuizData {
     id: string;
     title: string;
-    timeLimit: number;
+    timeLimit: number; // in minutes
     topic: string;
     numberOfQuestions: number;
   }
@@ -823,7 +823,7 @@ export function QuizGenerator() {
           difficultyLevel: difficulty,
           numberOfQuestions,
           questionTypes: selectedQuestionTypes,
-          timeLimit: timeLimit * 60,
+          timeLimit: timeLimit, // Send in minutes as expected by backend
         }),
       });
 
@@ -986,7 +986,7 @@ export function QuizGenerator() {
               <>
                 <QuizTag
                   icon={<ClockIcon />}
-                  text={formatTime(quizData.timeLimit)}
+                  text={formatTime(quizData.timeLimit * 60)}
                 />
                 <QuizTag icon={<DocumentIcon />} text={quizData.topic} />
                 <QuizTag

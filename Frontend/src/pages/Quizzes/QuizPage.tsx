@@ -27,7 +27,7 @@ interface QuizAttemptData {
   attemptId: string;
   quizId: string;
   title: string;
-  timeLimit: number; // in seconds
+  timeLimit: number; // in minutes
   questions: Question[];
   startedAt: string;
 }
@@ -276,7 +276,7 @@ export function QuizPage() {
         );
 
         setQuizData(transformedQuestions);
-        setTimeLeft(fetchedQuizData.timeLimit);
+        setTimeLeft(fetchedQuizData.timeLimit * 60); // Convert minutes to seconds
         setQuizTitle(fetchedQuizData.title);
         setAttemptId(fetchedQuizData.attemptId);
       } catch (error) {
