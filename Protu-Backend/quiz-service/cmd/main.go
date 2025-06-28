@@ -46,6 +46,8 @@ func main() {
 	dashboardService := service.NewDashboardService(quizRepo, attemptRepo)
 	aiService := service.NewAIService(&cfg)
 
+	autoFailService := service.NewAutoFailService(attemptRepo, quizRepo)
+
 	rabbitmqURL := cfg.RabbitMQURL
 	rabbitMQService := service.NewRabbitMQService(rabbitmqURL, userRepo)
 
@@ -74,6 +76,12 @@ func main() {
 	router.Use(middleware.ValidationMiddleware())
 
 	routes.SetupRoutes(router, &cfg, quizHandler, attemptHandler, dashboardHandler)
+
+	appCtx := context.Background()
+	autoFailService.StartAutoFailChecker(appCtx)
+	defer autoFailService.StopAutoFailChecker()
+
+	log.Println("Auto-fail service for expired quiz attempts has been started")
 
 	log.Printf("Starting quiz service on %s", cfg.HTTPServerAddress)
 	if err := router.Run(cfg.HTTPServerAddress); err != nil {

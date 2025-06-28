@@ -56,7 +56,7 @@ export function Path() {
   const CourseItem = ({ course }: { course: Course }) => {
     const courseName = course.name;
     const lessonsCount = course.lessons?.length || 0;
-    const durationHours = Math.ceil(lessonsCount * 0.5); // Assuming 30min per lesson
+    const durationHours = Math.ceil(lessonsCount * 0.5);
 
     return (
       <div className="w-[1500px] rounded-[32px] shadow-[0_2px_6px_rgba(0,0,0,0.2)] mb-[64px] p-[32px]">

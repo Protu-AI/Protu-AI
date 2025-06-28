@@ -28,9 +28,10 @@ type QuizList struct {
 }
 
 type DashboardSummary struct {
-	TotalQuizzes int     `json:"totalQuizzes"`
-	AverageScore float64 `json:"averageScore"`
-	SuccessRate  float64 `json:"successRate"`
+	TotalQuizzes   int     `json:"totalQuizzes"`
+	AverageScore   float64 `json:"averageScore"`
+	SuccessRate    float64 `json:"successRate"`
+	DraftedQuizzes int     `json:"draftedQuizzes"`
 }
 
 type PaginationMetadata struct {
@@ -91,24 +92,57 @@ func convertToFloat64(value interface{}) float64 {
 }
 
 func (s *DashboardService) GetDashboardSummary(ctx context.Context, userID string) (*DashboardSummary, error) {
-	stats, err := s.attemptRepo.GetAttemptStatsForUser(ctx, userID)
+	passedAttempts, _, err := s.attemptRepo.GetBestAttemptsByUserIDWithPagination(
+		ctx, userID, nil, 1, 1000, "completedAt", "desc", // Get all attempts without pagination
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	activeQuizzes, _, err := s.quizRepo.GetQuizzesByUserIDAndStatusPaginated(ctx, userID, models.QuizStatusActive, 1, 1)
+	totalQuizzes := len(passedAttempts)
+	passedCount := 0
+	totalScore := 0.0
+
+	for _, attempt := range passedAttempts {
+		totalScore += attempt.Score
+		if attempt.Passed {
+			passedCount++
+		}
+	}
+
+	averageScore := 0.0
+	if totalQuizzes > 0 {
+		averageScore = totalScore / float64(totalQuizzes)
+	}
+
+	successRate := 0.0
+	if totalQuizzes > 0 {
+		successRate = float64(passedCount) / float64(totalQuizzes) * 100
+	}
+
+	draftStatuses := []string{models.QuizStatusDraftStage1, models.QuizStatusDraft}
+	draftQuizzes, _, err := s.quizRepo.GetQuizzesByUserIDAndStatusesPaginated(ctx, userID, draftStatuses, 1, 1000)
 	if err != nil {
 		return nil, err
 	}
 
-	totalQuizzes := int(convertToFloat64(stats["totalQuizzes"])) + len(activeQuizzes)
-	averageScore := convertToFloat64(stats["averageScore"])
-	successRate := convertToFloat64(stats["successRate"])
+	attemptedQuizIDs := make(map[string]bool)
+	for _, attempt := range passedAttempts {
+		attemptedQuizIDs[attempt.QuizID.Hex()] = true
+	}
+
+	draftedQuizzesCount := 0
+	for _, quiz := range draftQuizzes {
+		if !attemptedQuizIDs[quiz.ID.Hex()] {
+			draftedQuizzesCount++
+		}
+	}
 
 	return &DashboardSummary{
-		TotalQuizzes: totalQuizzes,
-		AverageScore: averageScore,
-		SuccessRate:  successRate,
+		TotalQuizzes:   totalQuizzes,
+		AverageScore:   averageScore,
+		SuccessRate:    successRate,
+		DraftedQuizzes: draftedQuizzesCount,
 	}, nil
 }
 

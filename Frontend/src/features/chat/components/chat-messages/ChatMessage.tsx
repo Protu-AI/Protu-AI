@@ -30,11 +30,11 @@ export function ChatMessage({ message }: ChatMessageProps) {
     <div
       className={cn(
         "flex w-full mb-4",
-        isBot ? "justify-start" : "justify-end"
+        isBot ? "justify-start" : "justify-end pr-4"
       )}
     >
       {isBot && (
-        <div className="mr-[12px] shrink-0 self-start mt-1">
+        <div className="mr-[12px] shrink-0 self-start mt-1 pl-4">
           <div className="h-10 w-10 rounded-full border border-[#A6B5BB] dark:border-[#BFA7F3] flex items-center justify-center bg-transparent p-[9px]">
             <Sparkles className="h-full w-full text-[#5F24E0] dark:text-[#EFE9FC]" />
           </div>
@@ -49,7 +49,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
           "relative max-w-[600px] font-['Archivo'] text-[18px] md:text-[20px] font-normal text-[#1C0B43] dark:text-[#EFE9FC] leading-relaxed",
           isBot
             ? "bg-transparent"
-            : "bg-white dark:bg-[#BFA7F3]/80 rounded-2xl p-[12px]"
+            : "bg-gradient-to-br from-purple-400 to-purple-300 shadow-lg hover:shadow-xl hover:shadow-purple-600/40 hover:-translate-y-0.5 transition-all duration-300 ease-in-out shadow-purple-600/30 rounded-br-none text-white font-['Archivo'] dark:bg-[#BFA7F3]/80 rounded-2xl p-[12px]"
         )}
       >
         {isBot && (
@@ -142,8 +142,8 @@ export function ChatMessage({ message }: ChatMessageProps) {
 
         {hasAttachment && (
           <div className="flex items-center mt-2">
-            <Paperclip className="h-4 w-4 text-[#5F24E0] dark:text-[#EFE9FC] mr-2" />
-            <span className="text-sm text-[#5F24E0] dark:text-[#EFE9FC]">
+            <Paperclip className="h-4 w-4 text-white dark:text-[#EFE9FC] mr-2" />
+            <span className="text-sm text-[#643cbc] dark:text-[#EFE9FC]">
               {message.attachment?.name}
             </span>
           </div>

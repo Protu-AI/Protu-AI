@@ -5,9 +5,10 @@ import (
 )
 
 type DashboardSummaryResponse struct {
-	TotalQuizzes int     `json:"totalQuizzes"`
-	AverageScore float64 `json:"averageScore"`
-	SuccessRate  float64 `json:"successRate"`
+	TotalQuizzes   int     `json:"totalQuizzes"`
+	AverageScore   float64 `json:"averageScore"`
+	SuccessRate    float64 `json:"successRate"`
+	DraftedQuizzes int     `json:"draftedQuizzes"`
 }
 
 type QuizListResponse struct {

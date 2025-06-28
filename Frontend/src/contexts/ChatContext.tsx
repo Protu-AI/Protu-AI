@@ -2,8 +2,6 @@ import React, { createContext, useContext, useState } from "react";
 import { config } from "../../config";
 import { ChatSession } from "../features/chat/types";
 
-const ChatUrl = "http://localhost:8082/api";
-
 interface ChatContextType {
   sessions: ChatSession[];
   currentSessionId: string | undefined;
@@ -97,44 +95,81 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({
       return;
     }
 
-    if (!currentSessionId) {
-      await handleNewChat();
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append("content", content);
-    if (file) {
-      formData.append("file", file);
-    }
-
+    // Retrieve the authentication token from local storage.
     const token = localStorage.getItem("token");
     if (!token) {
-      console.log("No token found in local storage.");
+      console.log(
+        "No token found in local storage. User might not be authenticated."
+      );
       return;
     }
 
+    // Create a FormData object to send both text content and files (if any).
+    const formData = new FormData();
+    formData.append("content", content); // Append the text content of the message.
+    if (file) {
+      formData.append("file", file); // If a file is provided, append it to the form data.
+    }
+
+    let requestUrl; // Variable to hold the URL for the API request.
+    let requestMethod = "POST";
+
     try {
-      const response = await fetch(
-        `${config.apiUrl}/v1/messages/${currentSessionId}`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          body: formData,
-        }
-      );
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to send message");
+      // Determine the API endpoint based on whether a current session exists.
+      if (currentSessionId) {
+        // If a session ID exists, send the message to the specific session endpoint.
+        requestUrl = `${config.apiUrl}/v1/messages/${currentSessionId}`;
+        console.log(`Sending message to existing session: ${currentSessionId}`);
+      } else {
+        // If no session ID exists, create a new chat session by sending the message
+        // to the base messages endpoint.
+        requestUrl = `${config.apiUrl}/v1/messages`;
+        console.log("Creating new chat session and sending initial message.");
       }
 
+      // Perform the API fetch request.
+      const response = await fetch(requestUrl, {
+        method: requestMethod,
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      // Check if the response was successful (status code 2xx).
+      if (!response.ok) {
+        const errorData = await response.json(); // Parse the error response.
+        // Throw an error with a more descriptive message if available.
+        throw new Error(
+          errorData.message || "Failed to send message or create new chat"
+        );
+      }
+
+      // Parse the successful response data.
       const responseData = await response.json();
-      console.log("Message sent successfully:", responseData);
+      console.log("Message operation successful:", responseData);
+
+      // If a new chat was created (i.e., currentSessionId was null/undefined initially),
+      // update the currentSessionId with the new chatId from the response.
+      // This assumes `setCurrentSessionId` is available in the component's scope.
+      if (!currentSessionId && responseData.data && responseData.data.chatId) {
+        // Ensure `setCurrentSessionId` is defined before calling it.
+        if (typeof setCurrentSessionId === "function") {
+          setCurrentSessionId(responseData.data.chatId);
+          console.log(
+            `New session created with ID: ${responseData.data.chatId}`
+          );
+        } else {
+          console.warn(
+            "setCurrentSessionId is not defined. Cannot update chat ID after new chat creation."
+          );
+        }
+      }
+
+      // Return the full response data for further handling by the caller.
       return responseData;
     } catch (error) {
-      console.error("Error sending message:", error);
+      console.error("Error sending message or creating chat:", error);
     }
   };
 

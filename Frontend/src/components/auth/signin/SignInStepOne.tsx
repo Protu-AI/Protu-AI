@@ -40,7 +40,9 @@ export function SignInStepOne({
           // setImageUrl(data.data.imageUrl || null);
           onContinue(email, data.data.imageUrl || "");
         } else {
-          console.error("Validation failed:", data.message);
+          if (response.status === 404 && data.message === "User not found") {
+            alert("This email is not registered. Please sign up.");
+          }
         }
       } catch (error) {
         console.error("Error during validation:", error);

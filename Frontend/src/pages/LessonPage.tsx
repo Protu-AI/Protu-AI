@@ -38,9 +38,13 @@ const HtmlRenderer = ({ htmlContent }: { htmlContent: string }) => {
   );
 };
 
-const LessonContext = React.createContext({
+// Simplified context and state type for code outputs
+const LessonContext = React.createContext<{
+  codeOutputs: { [key: string]: { display: string; time?: string } };
+  handleRunCode: (key: string, code: string, language: string) => void;
+}>({
   codeOutputs: {},
-  handleRunCode: (key: string, code: string, language: string) => {},
+  handleRunCode: () => {},
 });
 
 const components = {
@@ -55,25 +59,19 @@ const components = {
   ),
   p: ({ node, ...props }) => (
     <p
-      className="font-['Archivo'] font-medium text-[16px] text-[#1C0B43] text-left leading-[1.8] mt-0 mb-[24px]" // Changed leading-[1.2] to leading-[1.6]
+      className="font-['Archivo'] font-medium text-[16px] text-[#1C0B43] text-left leading-[1.6] mt-0 mb-[24px]"
       {...props}
     />
   ),
   ul: ({ node, ...props }) => (
-    <ul
-      className="list-disc pl-6 mt-0 mb-[24px]" // Added list-disc and padding
-      {...props}
-    />
+    <ul className="list-disc pl-6 mt-0 mb-[24px]" {...props} />
   ),
   ol: ({ node, ...props }) => (
-    <ol
-      className="list-decimal pl-6 mt-0 mb-[24px]" // Added list-decimal and padding
-      {...props}
-    />
+    <ol className="list-decimal pl-6 mt-0 mb-[24px]" {...props} />
   ),
   li: ({ node, ...props }) => (
     <li
-      className="font-['Archivo'] text-[20px] text-[#1C0B43] leading-[1.6] mb-2 marker:text-[#5F24E0]" // Added leading, text color, and marker color
+      className="font-['Archivo'] text-[16px] text-[#1C0B43] leading-[1.6] mb-2 marker:text-[#5F24E0]"
       {...props}
     />
   ),
@@ -83,6 +81,9 @@ const components = {
     const { codeOutputs, handleRunCode } = useContext(LessonContext);
     const codeKey = codeContent;
     const language = match ? match[1] : "plaintext";
+
+    // Get the simplified execution result for this code block
+    const result = codeOutputs[codeKey];
 
     if (!inline && match) {
       return (
@@ -96,13 +97,18 @@ const components = {
             {codeContent}
           </SyntaxHighlighter>
 
-          {codeOutputs[codeKey] && (
+          {result && ( // Only show output block if there's a result
             <div className="bg-[#EFE9FC] rounded-[8px] mt-0 mb-[24px]">
               {language === "html" ? (
-                <HtmlRenderer htmlContent={codeOutputs[codeKey]} />
+                <HtmlRenderer htmlContent={result.display} />
               ) : (
                 <div className="!bg-[#FFFFFF] border-l-[8px] border-[#FFBF00] px-[32px] py-[12px] font-['Archivo'] font-medium text-[16px] text-[#1C0B43] text-left leading-[1.2]">
-                  {codeOutputs[codeKey]}
+                  <div style={{ whiteSpace: "pre-wrap" }}>{result.display}</div>
+                  {result.time && (
+                    <div className="text-right text-[12px] text-[#5F24E0] mt-2">
+                      Time: {result.time}s
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -130,7 +136,10 @@ const LessonPage = () => {
   const { lessonId } = useParams();
   const [isChatOpen, setIsChatOpen] = useState(false);
   const { user } = useAuth();
-  const [codeOutputs, setCodeOutputs] = useState<{ [key: string]: string }>({});
+  // Updated state type for codeOutputs
+  const [codeOutputs, setCodeOutputs] = useState<{
+    [key: string]: { display: string; time?: string };
+  }>({});
   const [lesson, setLesson] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -164,12 +173,12 @@ const LessonPage = () => {
     };
 
     fetchLesson();
-  }, [lessonId, courseLessons]);
+  }, [lessonId]);
 
   const markLessonCompleted = async () => {
     try {
       const token = localStorage.getItem("token");
-      if (!token || !user || user.userName === "Guest") return false;
+      if (!token || !user) return false;
 
       const response = await fetch(
         `${config.apiUrl}/v1/progress/courses/${courseName}/lessons/${lesson.name}/completed`,
@@ -217,7 +226,7 @@ const LessonPage = () => {
   const handleRunCode = async (key: string, code: string, language: string) => {
     if (language === "html") {
       // For HTML, directly render in the output area
-      setCodeOutputs((prev) => ({ ...prev, [key]: code }));
+      setCodeOutputs((prev) => ({ ...prev, [key]: { display: code } }));
       return;
     }
 
@@ -225,7 +234,9 @@ const LessonPage = () => {
     if (!token) {
       setCodeOutputs((prev) => ({
         ...prev,
-        [key]: "Error: Not authenticated. Please log in to run code.",
+        [key]: {
+          display: "Error: Not authenticated. Please log in to run code.",
+        },
       }));
       return;
     }
@@ -233,12 +244,17 @@ const LessonPage = () => {
     if (user?.userName === "Guest") {
       setCodeOutputs((prev) => ({
         ...prev,
-        [key]: "Error: Guest users cannot execute code. Please log in.",
+        [key]: {
+          display: "Error: Guest users cannot execute code. Please log in.",
+        },
       }));
       return;
     }
 
-    setCodeOutputs((prev) => ({ ...prev, [key]: "Running code..." }));
+    setCodeOutputs((prev) => ({
+      ...prev,
+      [key]: { display: "Running code..." },
+    }));
     try {
       const response = await fetch(`${config.apiUrl}/v1/execute`, {
         method: "POST",
@@ -249,7 +265,7 @@ const LessonPage = () => {
         body: JSON.stringify({
           source_code: code,
           language: language,
-          input: "", // You can add input if your API supports it
+          input: "",
         }),
       });
 
@@ -261,14 +277,19 @@ const LessonPage = () => {
       const data = await response.json();
       setCodeOutputs((prev) => ({
         ...prev,
-        [key]: data.output || "No output",
+        [key]: {
+          display: data.stdout || "No output", // Directly use stdout for display
+          time: data.time,
+        },
       }));
     } catch (err) {
       setCodeOutputs((prev) => ({
         ...prev,
-        [key]: `Error: ${
-          err instanceof Error ? err.message : "An unknown error occurred."
-        }`,
+        [key]: {
+          display: `Error: ${
+            err instanceof Error ? err.message : "An unknown error occurred."
+          }`,
+        },
       }));
       console.error("Error executing code:", err);
     }

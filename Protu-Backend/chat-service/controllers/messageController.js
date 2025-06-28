@@ -1,4 +1,5 @@
 const path = require('path');
+const fs = require('fs');
 const { getAIResponse } = require('../services/aiService');
 const messageService = require('../services/messageService');
 const { asyncWrapper } = require('../middleware/errorMiddleware');
@@ -96,13 +97,25 @@ const createMessageWithAutoChat = asyncWrapper(async (req, res) => {
   let attachmentName = null;
 
   if (file) {
-    attachmentPath = path.join(
+    const tempFilePath = file.path;
+    const targetDir = path.join(
       __dirname,
       '..',
       'uploads',
-      targetChatId,
-      file.filename
+      targetChatId.toString()
     );
+
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
+    }
+
+    const targetFilePath = path.join(targetDir, file.filename);
+
+    if (tempFilePath !== targetFilePath) {
+      fs.renameSync(tempFilePath, targetFilePath);
+    }
+
+    attachmentPath = targetFilePath;
     attachmentName = file.originalname;
   }
 
