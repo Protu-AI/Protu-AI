@@ -65,7 +65,6 @@ async def create_quiz(request: Request, quiz_request: QuizAgentInput):
                 'signal': ResponseSignal.AGENT_RESPONSE_FAILED.value,
             }
         )
-
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content={

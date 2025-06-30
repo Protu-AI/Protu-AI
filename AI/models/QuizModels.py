@@ -32,6 +32,8 @@ class QuizGenerationInput(BaseModel):
                         description="The prompt describing the quiz content")
     difficulty: str = Field(
         ..., description="Difficulty level of the quiz (e.g., Beginner, Intermediate, Advanced)")
+    number_of_questions: int = Field(
+        ..., description="Number of questions to generate for the quiz")
     question_type: str = Field(
         ..., description="Type of questions (e.g., Multiple Choice, True/False, Combination between both)")
     time: int = Field(..., description="Time to solve the quiz in minutes")
@@ -55,7 +57,7 @@ class QuizAgentResponse(BaseModel):
     topic: str = Field(
         ..., description="A topic (at most two words) derived from final_tags, describing the quiz questions' content (e.g., 'JavaScript Basics', 'Python Algorithms')")
     questions: List[QuizQuestion] = Field(
-        ..., min_length=25, description="List of questions for the quiz based on the prompt and the tags")
+        ..., min_length=1, description="List of questions for the quiz based on the prompt and the tags")
 
 
 class QuizModelAnswer(BaseModel):
