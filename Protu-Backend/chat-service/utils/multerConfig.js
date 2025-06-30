@@ -11,8 +11,7 @@ const sanitizeFilename = filename => filename.replace(/[^a-zA-Z0-9._-]/g, '_');
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const chatId = req.params.chatId;
-    if (!chatId) return cb(new Error('Chat ID is required'), false);
+    const chatId = req.params.chatId || req.body.chatId || 'temp';
 
     const uploadDir = path.join(__dirname, '..', 'uploads', chatId.toString());
     if (!fs.existsSync(uploadDir)) {
@@ -31,10 +30,7 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-  const allowedTypes = [
-    'text/plain',
-    'application/pdf'
-  ];
+  const allowedTypes = ['text/plain', 'application/pdf'];
   if (allowedTypes.includes(file.mimetype)) return cb(null, true);
   cb(
     new Error(`Invalid file type. Allowed types: ${allowedTypes.join(', ')}`),

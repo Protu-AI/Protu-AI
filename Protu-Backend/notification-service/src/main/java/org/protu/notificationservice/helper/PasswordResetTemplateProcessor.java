@@ -1,6 +1,5 @@
 package org.protu.notificationservice.helper;
 
-import lombok.RequiredArgsConstructor;
 import org.protu.notificationservice.dto.EmailData;
 import org.springframework.stereotype.Component;
 import org.thymeleaf.TemplateEngine;
@@ -10,21 +9,20 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Component
-@RequiredArgsConstructor
 public class PasswordResetTemplateProcessor implements TemplateProcessor {
 
   private final TemplateEngine templateEngine;
+
+  public PasswordResetTemplateProcessor(TemplateEngine templateEngine) {
+    this.templateEngine = templateEngine;
+  }
 
   @Override
   public Map<String, Object> getVariables(EmailData emailData) {
     Map<String, Object> variables = new HashMap<>();
     variables.put("username", emailData.username());
+    variables.put("otp", emailData.otp().value());
     variables.put("otpTtl", emailData.otp().ttlInMinutes());
-
-    String otp = emailData.otp().value();
-    for (int i = 0; i < otp.length(); i++) {
-      variables.put("otp_" + (i + 1), otp.charAt(i));
-    }
 
     return variables;
   }

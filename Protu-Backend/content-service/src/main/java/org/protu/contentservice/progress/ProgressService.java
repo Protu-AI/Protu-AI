@@ -1,142 +1,92 @@
 package org.protu.contentservice.progress;
 
-import jakarta.transaction.Transactional;
-import lombok.RequiredArgsConstructor;
-import org.protu.contentservice.course.Course;
+import org.protu.contentservice.common.exception.custom.LessonAlreadyCompletedException;
+import org.protu.contentservice.common.exception.custom.LessonAlreadyNotCompletedException;
+import org.protu.contentservice.course.CourseDto;
 import org.protu.contentservice.course.CourseService;
-import org.protu.contentservice.lesson.Lesson;
-import org.protu.contentservice.lesson.LessonHelper;
-import org.protu.contentservice.lesson.LessonRepository;
-import org.protu.contentservice.lesson.dto.LessonsWithCompletion;
-import org.protu.contentservice.progress.dto.UserProgressInCourse;
-import org.protu.contentservice.progress.user.User;
-import org.protu.contentservice.progress.user.UserHelper;
-import org.protu.contentservice.progress.usercourse.UserCourseRepository;
-import org.protu.contentservice.progress.usercourse.UserNotEnrolledInCourseException;
-import org.protu.contentservice.progress.usercourse.UsersCourses;
-import org.protu.contentservice.progress.usercourse.UsersCoursesPK;
-import org.protu.contentservice.progress.userlesson.UserLessonRepository;
-import org.protu.contentservice.progress.userlesson.UsersLessons;
-import org.protu.contentservice.progress.userlesson.UsersLessonsPK;
+import org.protu.contentservice.lesson.LessonService;
+import org.protu.contentservice.lesson.dto.LessonWithoutContent;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
-import java.util.Optional;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@RequiredArgsConstructor
 public class ProgressService {
 
-  private final UserCourseRepository userCourseRepo;
-  private final LessonRepository lessonRepo;
   private final CourseService courseService;
-  private final UserLessonRepository userLessonRepository;
-  private final UserHelper userHelper;
-  private final LessonHelper lessonHelper;
+  private final LessonService lessonService;
+  private final UserReplicaService userReplicaService;
+  private final ProgressRepository progressRepo;
 
-  private UsersLessons buildUserLessons(Long userId, String lessonName) {
-    User user = userHelper.fetchUserByIdOrThrow(userId);
-    Lesson lesson = lessonHelper.fetchLessonByNameOrThrow(lessonName);
-
-    UsersLessonsPK pk = new UsersLessonsPK(userId, lesson.getId());
-    return userLessonRepository.findById(pk)
-        .orElseGet(() -> UsersLessons.builder()
-            .id(pk)
-            .user(user)
-            .lesson(lesson)
-            .isCompleted(false).build());
+  public ProgressService(CourseService courseService, LessonService lessonService, UserReplicaService userReplicaService, ProgressRepository progressRepo) {
+    this.courseService = courseService;
+    this.lessonService = lessonService;
+    this.userReplicaService = userReplicaService;
+    this.progressRepo = progressRepo;
   }
 
-  public UserProgressInCourse getUserProgressInCourse(Long userId, String courseName) {
-    userHelper.checkIfUserExistsOrThrow(userId);
-    Course course = courseService.fetchCourseByNameOrThrow(courseName);
+  @Transactional(readOnly = true)
+  public UserCourseProgress getUserProgressInCourse(Long userId, String courseName) {
+    userReplicaService.getUserById(userId);
+    CourseDto course = courseService.getCourseByNameOrThrow(courseName);
 
-    int completedLessons = userCourseRepo.getCompletedLessonsByUserForCourse(userId, course.getId());
-    int totalNumberOfLessons = lessonRepo.findNumberOfLessonsForCourseWithId(course.getId());
-    return new UserProgressInCourse(course.getId(), completedLessons, totalNumberOfLessons);
+    int completedLessons = progressRepo.getTotalNumberOfCompletedLessonsInCourse(userId, course.id());
+    int totalLessons = progressRepo.getNumberOfLessonsInCourse(course.id());
+    return new UserCourseProgress(course.id(), completedLessons, totalLessons);
   }
 
   @Transactional
   public void enrollUserInCourse(Long userId, String courseName) {
-    Course course = courseService.fetchCourseByNameOrThrow(courseName);
-    User user = userHelper.fetchUserByIdOrThrow(userId);
-
-    UsersCoursesPK pk = new UsersCoursesPK(userId, course.getId());
-    if (!userCourseRepo.existsById(pk)) {
-      UsersCourses usersCourses = UsersCourses.builder()
-          .id(pk)
-          .completedLessons(0)
-          .user(user)
-          .course(course).build();
-      userCourseRepo.save(usersCourses);
-    }
+    userReplicaService.getUserById(userId);
+    CourseDto course = courseService.getCourseByNameOrThrow(courseName);
+    progressRepo.addCourseForUser(userId, course.id());
   }
 
   @Transactional
   public void cancelUserEnrollmentInCourse(Long userId, String courseName) {
-    Course course = courseService.fetchCourseByNameOrThrow(courseName);
-    userHelper.checkIfUserExistsOrThrow(userId);
+    userReplicaService.getUserById(userId);
+    CourseDto course = courseService.getCourseByNameOrThrow(courseName);
+    progressRepo.removeCourseForUser(userId, course.id());
+  }
 
-    Optional<UsersCourses> usersCoursesOpt = userCourseRepo.findById(new UsersCoursesPK(userId, course.getId()));
-    if (usersCoursesOpt.isEmpty())
-      return;
-    
-    usersCoursesOpt.get().setCompletedLessons(0);
-    userCourseRepo.save(usersCoursesOpt.get());
+  private boolean markLessonCompleted(Long userId, String lessonName) {
+    LessonWithoutContent lesson = lessonService.findByNameWithoutContent(lessonName);
+    return progressRepo.markLessonCompleted(userId, lesson.id());
+  }
+
+  private boolean markLessonNotCompleted(Long userId, String lessonName) {
+    LessonWithoutContent lesson = lessonService.findByNameWithoutContent(lessonName);
+    return progressRepo.markLessonUncompleted(userId, lesson.id());
   }
 
   @Transactional
-  public void incrementCompletedLessonsForUser(Long userId, String courseName) {
-    Course course = courseService.fetchCourseByNameOrThrow(courseName);
-    User user = userHelper.fetchUserByIdOrThrow(userId);
+  public void incrementCompletedLessonsByUser(Long userId, String courseName, String lessonName) {
+    userReplicaService.getUserById(userId);
+    CourseDto course = courseService.getCourseByNameOrThrow(courseName);
 
-    UsersCoursesPK pk = new UsersCoursesPK(userId, course.getId());
-    UsersCourses usersCourses = userCourseRepo.findById(pk)
-        .orElseGet(() -> UsersCourses.builder()
-            .id(pk)
-            .completedLessons(0)
-            .user(user)
-            .course(course).build());
+    if (!markLessonCompleted(userId, lessonName)) {
+      throw new LessonAlreadyCompletedException();
+    }
 
-    int totalNumberOfLessons = lessonRepo.findNumberOfLessonsForCourseWithId(course.getId());
-    if (usersCourses.getCompletedLessons() < totalNumberOfLessons) {
-      usersCourses.setCompletedLessons(usersCourses.getCompletedLessons() + 1);
-      userCourseRepo.save(usersCourses);
+    int lessonsCount = progressRepo.getNumberOfLessonsInCourse(course.id());
+    int completedLessonsCount = progressRepo.getTotalNumberOfCompletedLessonsInCourse(userId, course.id());
+
+    if (completedLessonsCount < lessonsCount) {
+      progressRepo.incrementCompletedLessonByUser(userId, course.id());
     }
   }
 
   @Transactional
-  public void decrementCompletedLessonsForUser(Long userId, String courseName) {
-    Course course = courseService.fetchCourseByNameOrThrow(courseName);
-    userHelper.checkIfUserExistsOrThrow(userId);
+  public void decrementCompletedLessonsByUser(Long userId, String courseName, String lessonName) {
+    userReplicaService.getUserById(userId);
+    CourseDto course = courseService.getCourseByNameOrThrow(courseName);
 
-    UsersCoursesPK pk = new UsersCoursesPK(userId, course.getId());
-    UsersCourses usersCourses = userCourseRepo.findById(pk)
-        .orElseThrow(UserNotEnrolledInCourseException::new);
-
-    if (usersCourses.getCompletedLessons() == 0) {
-      return;
+    if (!markLessonNotCompleted(userId, lessonName)) {
+      throw new LessonAlreadyNotCompletedException();
     }
-    usersCourses.setCompletedLessons(usersCourses.getCompletedLessons() - 1);
-    userCourseRepo.save(usersCourses);
-  }
 
-  @Transactional
-  public void markLessonCompleted(Long userId, String lessonName) {
-    UsersLessons userLesson = buildUserLessons(userId, lessonName);
-    userLesson.setIsCompleted(true);
-    userLessonRepository.save(userLesson);
-  }
-
-  @Transactional
-  public void markLessonNotCompleted(Long userId, String lessonName) {
-    UsersLessons userLesson = buildUserLessons(userId, lessonName);
-    userLesson.setIsCompleted(false);
-    userLessonRepository.save(userLesson);
-  }
-
-  public List<LessonsWithCompletion> getAllLessonsWithCompletionStatus(Long userId, String courseName) {
-    Course course = courseService.fetchCourseByNameOrThrow(courseName);
-    return lessonRepo.findLessonsWithCompletionStatus(userId, course.getId());
+    int completedLessonsCount = progressRepo.getTotalNumberOfCompletedLessonsInCourse(userId, course.id());
+    if (completedLessonsCount > 0) {
+      progressRepo.decrementCompletedLessonsByUser(userId, course.id());
+    }
   }
 }

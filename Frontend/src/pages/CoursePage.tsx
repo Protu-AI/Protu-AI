@@ -34,11 +34,54 @@ const CoursePage = () => {
     const fetchLessons = async () => {
       try {
         let response;
-        let fetchedLessons: any[] = [];
+        let fetchedLessons: Lesson[] = [];
 
         if (user) {
           // Authenticated request with progress
           const token = localStorage.getItem("token");
+
+          // 1. Send POST request for enrollment
+          try {
+            const enrollResponse = await fetch(
+              `${config.apiUrl}/v1/progress/courses/${courseName}/enrollments`,
+              {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json",
+                },
+              }
+            );
+
+            if (!enrollResponse.ok) {
+              const errorData = await enrollResponse.json();
+              // If the user is already enrolled, the backend might return a 409 Conflict or similar.
+              // You might want to handle this gracefully, e.g., by not throwing an error
+              // if the message indicates already enrolled.
+              if (
+                enrollResponse.status === 409 &&
+                errorData.message &&
+                errorData.message.includes("already enrolled")
+              ) {
+                console.log("User is already enrolled in this course.");
+              } else {
+                throw new Error(
+                  `Failed to enroll in course: ${
+                    errorData.message || enrollResponse.statusText
+                  }`
+                );
+              }
+            } else {
+              console.log("Enrollment successful!");
+            }
+          } catch (enrollError) {
+            console.error("Error during enrollment:", enrollError);
+            // Decide if you want to stop execution here or proceed to fetch lessons anyway.
+            // For now, we'll log the error and proceed to fetch lessons,
+            // as fetching lessons is often independent of a *new* enrollment.
+          }
+
+          // 2. Fetch lessons with progress
           response = await fetch(
             `${config.apiUrl}/v1/courses/${courseName}/lessons/progress`,
             {
@@ -56,7 +99,7 @@ const CoursePage = () => {
           fetchedLessons = data.data || [];
 
           // Map the response to match our Lesson interface
-          fetchedLessons = fetchedLessons.map((lesson) => ({
+          fetchedLessons = fetchedLessons.map((lesson: any) => ({
             id: lesson.id,
             name: lesson.name,
             lessonOrder: lesson.lessonOrder,
@@ -109,7 +152,7 @@ const CoursePage = () => {
     };
 
     fetchLessons();
-  }, [courseName]);
+  }, [courseName, user]);
 
   const formatCourseName = (courseName: string) => {
     return courseName

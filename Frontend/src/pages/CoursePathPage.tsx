@@ -1,6 +1,6 @@
 import { useParams } from "react-router-dom";
 import { MainLayout } from "@/layouts/MainLayout";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 
 interface Course {
   id: string;
@@ -17,13 +17,13 @@ const CoursePathPage = () => {
 
   const formatPathName = (pathName: string) => {
     return pathName
-      .replace(/-/g, ' ')
-      .split(' ')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
+      .replace(/-/g, " ")
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
   };
 
-  const coursePathTitle = formatPathName(pathName || '').toUpperCase();
+  const coursePathTitle = formatPathName(pathName || "").toUpperCase();
 
   useEffect(() => {
     // Replace this with actual API call
@@ -37,7 +37,8 @@ const CoursePathPage = () => {
           {
             id: "3",
             title: "React for Beginners",
-            description: "Dive into React and learn how to build user interfaces with components.",
+            description:
+              "Dive into React and learn how to build user interfaces with components.",
             lessons: 15,
             duration: "10 hours",
             icon: "https://img.icons8.com/ios-filled/100/5F24E0/html-5.png",
@@ -45,7 +46,8 @@ const CoursePathPage = () => {
           {
             id: "1",
             title: "HTML & CSS for Beginners",
-            description: "Start your web development journey by mastering the fundamentals of HTML and CSS. Learn how to structure pages, apply styles, and create responsive layouts using Flexbox and Grid.",
+            description:
+              "Start your web development journey by mastering the fundamentals of HTML and CSS. Learn how to structure pages, apply styles, and create responsive layouts using Flexbox and Grid.",
             lessons: 12,
             duration: "8 hours",
             icon: "https://img.icons8.com/ios-filled/100/5F24E0/html-5.png",
@@ -53,25 +55,10 @@ const CoursePathPage = () => {
           {
             id: "2",
             title: "JavaScript for Beginners",
-            description: "Learn the fundamentals of JavaScript. Understand variables, loops, functions, and more.",
+            description:
+              "Learn the fundamentals of JavaScript. Understand variables, loops, functions, and more.",
             lessons: 10,
             duration: "6 hours",
-            icon: "https://img.icons8.com/ios-filled/100/5F24E0/html-5.png",
-          },
-          {
-            id: "4",
-            title: "Node.js for Beginners",
-            description: "Explore the world of backend development with Node.js.",
-            lessons: 8,
-            duration: "5 hours",
-            icon: "https://img.icons8.com/ios-filled/100/5F24E0/html-5.png",
-          },
-          {
-            id: "5",
-            title: "Python for Beginners",
-            description: "Get started with Python and learn the basics of programming.",
-            lessons: 12,
-            duration: "7 hours",
             icon: "https://img.icons8.com/ios-filled/100/5F24E0/html-5.png",
           },
         ];
@@ -103,7 +90,10 @@ const CoursePathPage = () => {
                     alt="Book Icon"
                     className="h-[16px]"
                   />
-                  <span className="ml-2 font-['Archivo'] font-semibold text-[16px]" style={{ color: '#A6B5BB' }}>
+                  <span
+                    className="ml-2 font-['Archivo'] font-semibold text-[16px]"
+                    style={{ color: "#A6B5BB" }}
+                  >
                     {course.lessons} Lessons
                   </span>
                   <img
@@ -111,7 +101,12 @@ const CoursePathPage = () => {
                     alt="Timer Icon"
                     className="ml-4 h-[16px]"
                   />
-                  <span className="ml-2 font-['Archivo'] font-semibold text-[16px]" style={{ color: '#A6B5BB' }}>{course.duration}</span>
+                  <span
+                    className="ml-2 font-['Archivo'] font-semibold text-[16px]"
+                    style={{ color: "#A6B5BB" }}
+                  >
+                    {course.duration}
+                  </span>
                 </div>
               </div>
             </div>
@@ -124,7 +119,10 @@ const CoursePathPage = () => {
       <div className="mt-[28px]">
         <div className="w-full h-[1px] bg-[#D6D6D6]"></div>
       </div>
-      <div className="mt-[32px] font-['Archivo'] text-[24px]" style={{ color: '#ABABAB', textAlign: 'left' }}>
+      <div
+        className="mt-[32px] font-['Archivo'] text-[24px]"
+        style={{ color: "#ABABAB", textAlign: "left" }}
+      >
         {course.description}
       </div>
     </div>
@@ -146,7 +144,7 @@ const CoursePathPage = () => {
 
         {/* Courses */}
         <div className="flex flex-col items-center w-full">
-          {courses.map(course => (
+          {courses.map((course) => (
             <CourseItem key={course.id} course={course} />
           ))}
         </div>

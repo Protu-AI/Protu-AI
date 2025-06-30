@@ -2,119 +2,76 @@ package org.protu.contentservice.course;
 
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
-import lombok.RequiredArgsConstructor;
-import org.protu.contentservice.common.exception.custom.EntityAlreadyExistsException;
 import org.protu.contentservice.common.exception.custom.EntityNotFoundException;
 import org.protu.contentservice.common.properties.AppProperties;
-import org.protu.contentservice.course.dto.CourseRequest;
-import org.protu.contentservice.course.dto.CourseResponse;
-import org.protu.contentservice.course.dto.CourseSummary;
-import org.protu.contentservice.lesson.dto.LessonSummary;
-import org.protu.contentservice.track.Track;
-import org.protu.contentservice.track.TrackRepository;
-import org.protu.contentservice.track.TrackService;
+import org.protu.contentservice.lesson.LessonService;
+import org.protu.contentservice.lesson.dto.LessonWithoutContent;
+import org.protu.contentservice.lesson.dto.LessonsWithCompletion;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
-import java.sql.Timestamp;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
 
 @Service
-@RequiredArgsConstructor
 public class CourseService {
 
-  private final TrackService trackService;
-  private final TrackRepository trackRepo;
-  private final CourseRepository courseRepo;
-  private final CourseMapper courseMapper;
+  private static final String CACHE_ALL_COURSES_LIST = "all-courses-list";
+  private static final String CACHE_COURSE_DETAILS = "course-details";
+  private static final String CACHE_COURSE_LESSONS = "course-lessons";
+  private static final String CACHE_COURSE_LESSONS_WITH_COMPLETION = "course-lessons-with-completion";
+  private final CourseRepository courses;
+  private final LessonService lessonService;
   private final AppProperties props;
 
-  private List<CourseSummary> findAllCoursesWithLessonSummary(List<Object[]> queryResult) {
-    Map<Integer, CourseSummary> courseMap = new HashMap<>();
-
-    for (Object[] row : queryResult) {
-      Integer courseId = (Integer) row[0];
-      CourseSummary courseSummary = courseMap.computeIfAbsent(courseId,
-          id -> new CourseSummary(id, (String) row[1], (String) row[2], (String) row[3], (Timestamp) row[4], (Timestamp) row[5], new ArrayList<>()));
-
-      courseMap.put(courseId, courseSummary);
-      if (row[6] != null) {
-        LessonSummary lessonSummary = new LessonSummary(
-            (Integer) row[6],
-            (String) row[7],
-            (Integer) row[8],
-            (Timestamp) row[9],
-            (Timestamp) row[10]
-        );
-
-        courseSummary.lessons().add(lessonSummary);
-      }
-    }
-
-    return new ArrayList<>(courseMap.values());
+  public CourseService(CourseRepository courses, LessonService lessonService, AppProperties props) {
+    this.courses = courses;
+    this.lessonService = lessonService;
+    this.props = props;
   }
 
-  public Course fetchCourseByNameOrThrow(String courseName) {
-    return courseRepo.findCourseByName(courseName).orElseThrow(() -> new EntityNotFoundException("Course", courseName));
+  @Transactional
+  @CacheEvict(value = CACHE_ALL_COURSES_LIST, allEntries = true)
+  public void createCourse(CourseRequest courseRequest) {
+    courses.add(courseRequest);
   }
 
-  public CourseResponse createCourse(CourseRequest courseRequest) {
-    courseRepo.findCourseByName(courseRequest.name()).ifPresent(course -> {
-      throw new EntityAlreadyExistsException("Course", courseRequest.name());
-    });
-
-    Course course = courseMapper.toCourseEntity(courseRequest);
-    courseRepo.save(course);
-    return courseMapper.toCourseDto(course);
+  @Transactional(readOnly = true)
+  @Cacheable(value = CACHE_COURSE_DETAILS, key = "#courseName", unless = "#result == null")
+  public CourseWithLessons getCourseWithLessonsByName(String courseName) {
+    return courses.findByName(courseName).orElseThrow(() -> new EntityNotFoundException("Course", courseName));
   }
 
-  public CourseResponse getCourseByName(String courseName) {
-    Course course = fetchCourseByNameOrThrow(courseName);
-    return courseMapper.toCourseDto(course);
+  @Transactional(readOnly = true)
+  @Cacheable(value = CACHE_COURSE_DETAILS, key = "#courseName", unless = "#result == null")
+  public CourseDto getCourseByNameOrThrow(String courseName) {
+    return courses.findByNameOrThrow(courseName);
   }
 
-  public CourseResponse updateCourse(String courseName, CourseRequest courseRequest) {
-    Course course = fetchCourseByNameOrThrow(courseName);
-    Optional.ofNullable(courseRequest.name()).ifPresent(course::setName);
-    Optional.ofNullable(courseRequest.description()).ifPresent(course::setDescription);
-    courseRepo.save(course);
-    return courseMapper.toCourseDto(course);
+  @Transactional
+  @Caching(evict = {
+      @CacheEvict(value = CACHE_ALL_COURSES_LIST, allEntries = true),
+      @CacheEvict(value = CACHE_COURSE_DETAILS, key = "#courseName"),
+      @CacheEvict(value = CACHE_COURSE_LESSONS, key = "#courseName"),
+  })
+  public void updateCourse(String courseName, CourseRequest courseRequest) {
+    courses.update(courseName, courseRequest);
   }
 
-  public List<CourseSummary> getAllCourses() {
-    List<Object[]> queryResult = courseRepo.findAllProjectedBy();
-    return findAllCoursesWithLessonSummary(queryResult);
+  @Transactional(readOnly = true)
+  @Cacheable(value = CACHE_ALL_COURSES_LIST, unless = "#result == null || #result.isEmpty()")
+  public List<CourseWithLessons> getAllCourses() {
+    return courses.findAll();
   }
 
-  public List<CourseResponse> getAllCoursesForTrack(String trackName) {
-    Track track = trackService.fetchTrackByNameOrThrow(trackName);
-    return courseMapper.toCourseDtoList(track.getCourses());
-  }
-
-  public List<CourseResponse> addExistingCourseToTrack(String trackName, String courseName) {
-    Track track = trackService.fetchTrackByNameOrThrow(trackName);
-    Course course = fetchCourseByNameOrThrow(courseName);
-    track.getCourses().add(course);
-    course.setTrack(track);
-    trackRepo.save(track);
-    return courseMapper.toCourseDtoList(track.getCourses());
-  }
-
-  public void deleteCourseFromTrack(String trackName, String courseName) {
-    Track track = trackService.fetchTrackByNameOrThrow(trackName);
-    Course course = fetchCourseByNameOrThrow(courseName);
-    if (track.getCourses().remove(course)) {
-      course.setTrack(null);
-    }
-
-    trackRepo.save(track);
-    courseRepo.save(course);
-  }
-
-  public CourseResponse uploadCoursePic(String courseName, MultipartFile file) {
-    Course course = fetchCourseByNameOrThrow(courseName);
+  @SuppressWarnings("rawtypes")
+  private String uploadToCloudinary(MultipartFile file) {
     try {
       File file1 = File.createTempFile("coursePic-", file.getOriginalFilename());
       file.transferTo(file1);
@@ -125,12 +82,73 @@ public class CourseService {
           "api_secret", props.cloudinary().apiSecret()
       )).uploader().upload(file1, uploadMap);
 
-      String secureAssetUrl = uploadResults.get("secure_url").toString();
-      course.setCoursePicURL(secureAssetUrl);
-      courseRepo.save(course);
-      return courseMapper.toCourseDto(course);
+      return uploadResults.get("secure_url").toString();
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  @Transactional
+  @Caching(evict = {
+      @CacheEvict(value = CACHE_ALL_COURSES_LIST, allEntries = true),
+      @CacheEvict(value = CACHE_COURSE_DETAILS, key = "#courseName"),
+      @CacheEvict(value = CACHE_COURSE_LESSONS, key = "#courseName"),
+  })
+  private void saveCoursePic(String courseName, String picUrl) {
+    courses.updateCoursePicture(courseName, picUrl);
+  }
+
+  public void uploadCoursePic(String courseName, MultipartFile file) {
+    courses.findByNameOrThrow(courseName);
+    String secureAssetUrl = uploadToCloudinary(file);
+    saveCoursePic(courseName, secureAssetUrl);
+  }
+
+  @Transactional(readOnly = true)
+  @Cacheable(value = CACHE_COURSE_LESSONS, key = "#courseName", unless = "#result == null || #result.isEmpty()")
+  public List<LessonWithoutContent> getAllLessonsForCourse(String courseName) {
+    CourseDto course = courses.findByNameOrThrow(courseName);
+    return courses.findLessonsByCourseId(course.id());
+  }
+
+  @Transactional
+  @Caching(evict = {
+      @CacheEvict(value = CACHE_ALL_COURSES_LIST, allEntries = true),
+      @CacheEvict(value = CACHE_COURSE_DETAILS, key = "#courseName"),
+      @CacheEvict(value = CACHE_COURSE_LESSONS, key = "#courseName"),
+  })
+  public void addExistingLessonToCourse(String courseName, String lessonName) {
+    CourseDto course = courses.findByNameOrThrow(courseName);
+    LessonWithoutContent lesson = lessonService.findByNameWithoutContent(lessonName);
+    courses.addLessonToCourse(course.id(), lesson.id());
+  }
+
+  @Transactional
+  @Caching(evict = {
+      @CacheEvict(value = CACHE_ALL_COURSES_LIST, allEntries = true),
+      @CacheEvict(value = CACHE_COURSE_DETAILS, key = "#courseName"),
+      @CacheEvict(value = CACHE_COURSE_LESSONS, key = "#courseName"),
+  })
+  public void deleteLessonFromCourse(String courseName, String lessonName) {
+    CourseDto course = courses.findByNameOrThrow(courseName);
+    LessonWithoutContent lesson = lessonService.findByNameWithoutContent(lessonName);
+    courses.deleteLessonFromCourse(course.id(), lesson.id());
+  }
+
+  @Transactional
+  @Caching(evict = {
+      @CacheEvict(value = CACHE_ALL_COURSES_LIST, allEntries = true),
+      @CacheEvict(value = CACHE_COURSE_DETAILS, key = "#courseName"),
+      @CacheEvict(value = CACHE_COURSE_LESSONS, key = "#courseName"),
+  })
+  public void deleteCourse(String courseName) {
+    courses.delete(courseName);
+  }
+
+  @Transactional(readOnly = true)
+  @Cacheable(value = CACHE_COURSE_LESSONS_WITH_COMPLETION, key = "{#userId, #courseName}", unless = "#result == null || #result.isEmpty()")
+  public List<LessonsWithCompletion> getAllLessonsWithCompletionStatusForCourse(Long userId, String courseName) {
+    CourseDto course = courses.findByNameOrThrow(courseName);
+    return courses.findLessonsWithCompletionStatus(userId, course.id());
   }
 }

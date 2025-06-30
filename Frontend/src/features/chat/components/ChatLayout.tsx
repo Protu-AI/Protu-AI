@@ -10,7 +10,7 @@ import { useChat } from "@/contexts/ChatContext";
 export function ChatLayout() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const { setSessions, error, setError } = useChat();
+  const { setSessions, error, currentSessionId, setError } = useChat();
   useEffect(() => {
     const fetchChats = async () => {
       const userId = localStorage.getItem("userId");
@@ -58,7 +58,7 @@ export function ChatLayout() {
     };
 
     fetchChats();
-  }, []);
+  }, [currentSessionId]);
 
   return (
     <div className="flex flex-1 overflow-hidden pt-8">

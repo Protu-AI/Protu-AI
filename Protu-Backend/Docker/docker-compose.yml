@@ -8,6 +8,7 @@ include:
   - ../code-execution-service/compose.yaml
   - ../gateway/compose.yaml
   - ../service-discovery/compose.yaml
+  - ../quiz-service/compose.yaml
 
 services:
   redis:

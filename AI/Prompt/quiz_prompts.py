@@ -90,7 +90,7 @@ tag_filtering_agent_expected_output = "\n".join([
 quiz_generation_agent_role = "Quiz Generation Agent"
 
 quiz_generation_agent_goal = "\n".join([
-    "Generate a quiz with 25+ questions, a concise title, and a topic (at most two words) based on the provided prompt, difficulty, question type, time, and curated final tags.",
+    "Generate a quiz with the specified number of questions, a concise title, and a topic (at most two words) based on the provided prompt, difficulty, question type, time, and curated final tags.",
     "Questions must align with the prompt and final tags, which are programming and software engineering-related (e.g., Python, front-end, back-end, data science).",
     "Ensure questions are diverse, high-quality, and aligned with the specified difficulty and question type (Multiple Choice, True/False, or Combination).",
     "The quiz should be engaging, educational, and fit within the time limit.",
@@ -106,11 +106,12 @@ quiz_generation_agent_backstory = "\n".join([
 ])
 
 quiz_generation_task_description = "\n".join([
-    "Generate a quiz with 25+ questions, a title, and a topic using:",
+    "Generate a quiz with the specified number of questions, a title, and a topic using:",
     "- Prompt: {prompt}",
     "- Difficulty: {difficulty}",
     "- Question Type: {question_type} (Multiple Choice, True/False, or Combination)",
     "- Time: {time} minutes",
+    "- Number of Questions: {number_of_questions}",
     "- Final Tags: from the Tag Filtering Agent",
     "",
     "Instructions:",
@@ -123,6 +124,7 @@ quiz_generation_task_description = "\n".join([
     "    - True/False: exactly 2 choices ('True', 'False').",
     "    - Combination: a balanced mix (e.g., 50% Multiple Choice with 4 choices, 50% True/False with 2 choices).",
     "  - `correct_answer_text`: the full text of the correct option ('True' or 'False' for True/False; one of the 4 choices for Multiple Choice).",
+    "- Generate exactly {number_of_questions} questions, no more, no less.",
     "- Ensure questions are diverse, covering all final tags and matching the difficulty level (e.g., basic syntax for Beginner, algorithms for Advanced).",
     "- Ensure questions fit the time limit (e.g., 1–2 minutes per question).",
     "- Output JSON conforming to the QuizAgentResponse model with 'quiz_title', 'topic', and 'questions' fields."
@@ -132,7 +134,7 @@ quiz_generation_task_expected_output = "\n".join([
     "Output a JSON conforming to the QuizAgentResponse model with:",
     "- `quiz_title`: a concise title based on the topic and difficulty.",
     "- `topic`: a topic (at most two words) derived from the final tags, summarizing the quiz content.",
-    "- `questions`: list of 25+ items, each containing:",
+    "- `questions`: list of exactly {number_of_questions} items, each containing:",
     "  - `question`: the question text.",
     "  - `options`: 4 choices for Multiple Choice, 2 choices ('True', 'False') for True/False, or a mix for Combination.",
     "  - `correct_answer_text`: the correct option."

@@ -1,37 +1,74 @@
 package org.protu.contentservice.lesson;
 
-import org.protu.contentservice.lesson.dto.LessonSummary;
-import org.protu.contentservice.lesson.dto.LessonsWithCompletion;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.NativeQuery;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+import org.protu.contentservice.lesson.dto.LessonRequest;
+import org.protu.contentservice.lesson.dto.LessonUpdateRequest;
+import org.protu.contentservice.lesson.dto.LessonWithContent;
+import org.protu.contentservice.lesson.dto.LessonWithoutContent;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface LessonRepository extends JpaRepository<Lesson, Integer> {
+public class LessonRepository {
 
-  Optional<Lesson> findLessonByName(String name);
+  private final JdbcClient jdbcClient;
 
-  @NativeQuery("SELECT COUNT(id) FROM lessons WHERE course_id = :courseId")
-  Integer findNumberOfLessonsForCourseWithId(Integer courseId);
+  public LessonRepository(JdbcClient jdbcClient) {
+    this.jdbcClient = jdbcClient;
+  }
 
-  @Query("SELECT new org.protu.contentservice.lesson.dto.LessonsWithCompletion" +
-      "(l.id, l.name, l.lessonOrder, ul.isCompleted) " +
-      "FROM Lesson l " +
-      "LEFT JOIN UsersLessons ul " +
-      "ON l.id = ul.lesson.id AND ul.user.id = :userId " +
-      "WHERE l.course.id = :courseId " +
-      "ORDER BY l.lessonOrder")
-  List<LessonsWithCompletion> findLessonsWithCompletionStatus(@Param("userId") Long userId, @Param("courseId") Integer courseId);
+  public void add(LessonRequest lessonRequest) {
+    jdbcClient.sql("""
+            INSERT INTO lessons (name, content, lesson_order)
+            VALUES (:name, :content, :lessonOrder)
+            ON CONFLICT (name)
+            DO NOTHING
+            """)
+        .param("name", lessonRequest.name())
+        .param("content", lessonRequest.content())
+        .param("lessonOrder", lessonRequest.lessonOrder())
+        .update();
+  }
 
+  public Optional<LessonWithContent> findByName(String lessonName) {
+    return jdbcClient.sql("""
+            SELECT id, name, content, lesson_order AS lessonOrder
+            FROM lessons
+            WHERE name = :name
+            """)
+        .param("name", lessonName)
+        .query(LessonWithContent.class)
+        .optional();
+  }
 
-  @Query("SELECT new org.protu.contentservice.lesson.dto.LessonSummary(l.id, l.name, l.lessonOrder, l.createdAt, l.updatedAt) " +
-      "FROM Lesson l " +
-      "WHERE l.course.id = :courseId " +
-      "ORDER BY l.lessonOrder")
-  List<LessonSummary> findAllLessonsInCourse(@Param("courseId") Integer courseId);
+  public Optional<LessonWithoutContent> findByNameWithoutContent(String lessonName) {
+    return jdbcClient.sql("""
+            SELECT id, name, lesson_order AS lessonOrder
+            FROM lessons
+            WHERE name = :name
+            """)
+        .param("name", lessonName)
+        .query(LessonWithoutContent.class)
+        .optional();
+  }
+
+  public void update(String lessonName, LessonUpdateRequest lessonRequest) {
+    jdbcClient.sql("""
+            UPDATE lessons
+            SET name = :newName, content = :content, lesson_order = :lessonOrder
+            WHERE name = :name
+            """)
+        .param("newName", lessonRequest.name())
+        .param("content", lessonRequest.content())
+        .param("lessonOrder", lessonRequest.lessonOrder())
+        .param("name", lessonName)
+        .update();
+  }
+
+  public void delete(String lessonName) {
+    jdbcClient.sql("DELETE FROM lessons WHERE name = :lessonName")
+        .param("lessonName", lessonName)
+        .update();
+  }
 }
