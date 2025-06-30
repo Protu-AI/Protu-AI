@@ -2,8 +2,6 @@ from models import *
 
 from crewai import Process, LLM
 
-import agentops
-
 from .BaseController import BaseController
 
 from stores.llm import LLMFactoryProvider
@@ -11,11 +9,9 @@ from stores.agents import AgentBuilder, CrewAIBuilder, TaskBuilder
 
 from models import *
 
-from Prompt import *
+from prompts import *
 
 from routes.schemas import QuizAgentInput
-
-import os
 
 
 class AgentsController(BaseController):
@@ -31,6 +27,8 @@ class AgentsController(BaseController):
         self.tags_suggestion_crew = self.create_tag_suggestion_crew()
 
         self.quiz_generation_crew = self.create_quiz_generation_crew()
+
+        self.chat_title_generation_crew = self.create_chat_title_generation_crew()
 
     def create_tag_suggestion_crew(self):
 
@@ -131,3 +129,40 @@ class AgentsController(BaseController):
             raise ValueError("No output received from the crew.")
 
         return crew_output
+
+    def create_chat_title_generation_crew(self):
+
+        chat_title_generation_agent = AgentBuilder().create_agent(
+            agent_role=title_generation_agent_role,
+            agent_goal=title_generation_agent_goal,
+            agent_backstory=title_generation_agent_backstory,
+            agent_llm=self.llm
+        )
+
+        chat_title_generation_task = TaskBuilder().create_task(
+            task_description=title_generation_task_description,
+            expected_output=title_generation_task_expected_output,
+            output_json=ChatTitleOutput,
+            task_agent=chat_title_generation_agent
+        )
+
+        self.chat_title_generation_crew = CrewAIBuilder(
+            crew_tasks=[chat_title_generation_task],
+            crew_agents=[chat_title_generation_agent]
+        ).create_crew()
+
+        return self.chat_title_generation_crew
+
+    def create_chat_title(self, input: ChatTitleGenerationInput):
+        if not hasattr(self, 'chat_title_generation_crew'):
+            self.chat_title_generation_crew = self.create_chat_title_generation_crew()
+
+        crew_output = self.chat_title_generation_crew.kickoff(
+            inputs=input.model_dump()
+        )
+
+        if crew_output is None or crew_output['chat_title'] is None:
+
+            raise ValueError("No output received from the crew.")
+
+        return crew_output['chat_title']

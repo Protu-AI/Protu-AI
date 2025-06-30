@@ -11,7 +11,11 @@ from controllers import DataController, BaseController, NLPController, DBControl
 from controllers.Enums import ResponseSignal
 
 import logging
-from .schemas.data import ProcessRequest
+
+from routes.schemas import *
+
+from models import *
+
 data_router = APIRouter(
     prefix="/protu/ai/data"
 )
@@ -46,8 +50,44 @@ async def process_end(request: Request, process_request: ProcessRequest):
         )
     except Exception as e:
         logger.log(logging.WARNING, f"Error in trigger_llm_response: {e}")
-        
+
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=ResponseSignal.LLM_GENERATION_FAILED.value
         )
+
+
+@data_router.post("/chat_title")
+async def chat_title_generation(request: Request, chat_messages: ChatTitleGenerationRequst):
+
+    agents_controller = request.app.agents_controller
+
+    db_controller = request.app.db_controller
+
+    all_messages_as_tuples = db_controller.get_all_messages_by_chat_id(
+        chat_id=chat_messages.chat_id
+    )
+
+    all_messages = [
+        f"{sender}: {content}"
+        for sender, content in all_messages_as_tuples
+    ]
+
+    chat_title = agents_controller.create_chat_title(
+        input=ChatTitleGenerationInput(
+            chat_messages=all_messages
+        )
+    )
+
+    if not chat_title:
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"message": ResponseSignal.AGENT_RESPONSE_FAILED.value}
+        )
+
+    return JSONResponse(
+        content={
+            "message": ResponseSignal.AGENT_RESPONSE_SUCCESS.value,
+            "chat_title": chat_title
+        }
+    )

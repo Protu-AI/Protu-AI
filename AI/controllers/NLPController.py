@@ -9,7 +9,7 @@ from stores.vectordb import VectorDBFactoryProvider
 
 from models.QuizModels import FeedbackInput
 import os
-import Prompt
+import prompts
 
 from groq import Groq
 
@@ -176,12 +176,12 @@ class NLPController(BaseController):
         # if not retrieved_documents or len(retrieved_documents) == 0:
         #     return full_prompt, chat_history, answer
 
-        system_prompt = Prompt.system_prompt
+        system_prompt = prompts.system_prompt
 
         if retrieved_documents:
             documents_prompt = '\n'.join(
                 [
-                    Prompt.document_prompt.substitute(
+                    prompts.document_prompt.substitute(
                         doc_num=idx,
                         doc_content=self.generation_model.process_text(
                             doc.text),
@@ -191,11 +191,11 @@ class NLPController(BaseController):
                 ]
             )
 
-        memory_prompt = Prompt.memory_prompt.substitute(
+        memory_prompt = prompts.memory_prompt.substitute(
             conversation_history=memory_summary
         )
 
-        footer_prompt = Prompt.footer_prompt.substitute(
+        footer_prompt = prompts.footer_prompt.substitute(
             query=query
         )
 
@@ -226,7 +226,7 @@ class NLPController(BaseController):
         if not inputs or not inputs.quiz or len(inputs.quiz) == 0:
             return None
 
-        feedback_system_prompt = Prompt.feedback_system_prompt
+        feedback_system_prompt = prompts.feedback_system_prompt
 
         full_prompt = '\n'.join(
             [
