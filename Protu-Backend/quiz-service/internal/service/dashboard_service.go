@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"sort"
 	"strings"
 
 	"protu.ai/quiz-service/internal/models"
@@ -151,14 +152,16 @@ func (s *DashboardService) GetPassedQuizzes(ctx context.Context, userID string, 
 
 	passed := true
 
-	actualPage := options.Page
-	actualPageSize := options.PageSize
-	if options.Topic != "" {
+	var actualPage, actualPageSize int
+	var needsAppLevelSorting bool
+
+	if options.SortBy == "topic" || options.Topic != "" {
+		needsAppLevelSorting = true
 		actualPage = 1
-		actualPageSize = options.Page * options.PageSize * 2
-		if actualPageSize > 1000 {
-			actualPageSize = 1000
-		}
+		actualPageSize = 1000
+	} else {
+		actualPage = options.Page
+		actualPageSize = options.PageSize
 	}
 
 	attempts, totalCount, err := s.attemptRepo.GetBestAttemptsByUserIDWithPagination(
@@ -183,7 +186,7 @@ func (s *DashboardService) GetPassedQuizzes(ctx context.Context, userID string, 
 		quizMap[quiz.ID.Hex()] = quiz
 	}
 
-	filteredCards := make([]QuizCard, 0)
+	allCards := make([]QuizCard, 0)
 	for _, attempt := range attempts {
 		quiz, exists := quizMap[attempt.QuizID.Hex()]
 		if !exists {
@@ -194,7 +197,7 @@ func (s *DashboardService) GetPassedQuizzes(ctx context.Context, userID string, 
 			continue
 		}
 
-		filteredCards = append(filteredCards, QuizCard{
+		allCards = append(allCards, QuizCard{
 			ID:        attempt.QuizID.Hex(),
 			Title:     quiz.Title,
 			Topic:     quiz.Topic,
@@ -204,23 +207,32 @@ func (s *DashboardService) GetPassedQuizzes(ctx context.Context, userID string, 
 		})
 	}
 
-	finalCards := filteredCards
-	adjustedTotalCount := totalCount
+	if needsAppLevelSorting && options.SortBy == "topic" {
+		sort.Slice(allCards, func(i, j int) bool {
+			if options.SortOrder == "asc" {
+				return strings.ToLower(allCards[i].Topic) < strings.ToLower(allCards[j].Topic)
+			}
+			return strings.ToLower(allCards[i].Topic) > strings.ToLower(allCards[j].Topic)
+		})
+	}
 
-	if options.Topic != "" {
-		adjustedTotalCount = int64(len(filteredCards))
+	finalCards := allCards
+	adjustedTotalCount := int64(len(allCards))
 
+	if needsAppLevelSorting || options.Topic != "" {
 		startIndex := (options.Page - 1) * options.PageSize
 		endIndex := startIndex + options.PageSize
 
-		if startIndex > len(filteredCards) {
+		if startIndex > len(allCards) {
 			finalCards = []QuizCard{}
 		} else {
-			if endIndex > len(filteredCards) {
-				endIndex = len(filteredCards)
+			if endIndex > len(allCards) {
+				endIndex = len(allCards)
 			}
-			finalCards = filteredCards[startIndex:endIndex]
+			finalCards = allCards[startIndex:endIndex]
 		}
+	} else {
+		adjustedTotalCount = totalCount
 	}
 
 	totalPages := 0
@@ -244,14 +256,16 @@ func (s *DashboardService) GetFailedQuizzes(ctx context.Context, userID string, 
 
 	passed := false
 
-	actualPage := options.Page
-	actualPageSize := options.PageSize
-	if options.Topic != "" {
+	var actualPage, actualPageSize int
+	var needsAppLevelSorting bool
+
+	if options.SortBy == "topic" || options.Topic != "" {
+		needsAppLevelSorting = true
 		actualPage = 1
-		actualPageSize = options.Page * options.PageSize * 2
-		if actualPageSize > 1000 {
-			actualPageSize = 1000
-		}
+		actualPageSize = 1000
+	} else {
+		actualPage = options.Page
+		actualPageSize = options.PageSize
 	}
 
 	attempts, totalCount, err := s.attemptRepo.GetBestAttemptsByUserIDWithPagination(
@@ -276,7 +290,7 @@ func (s *DashboardService) GetFailedQuizzes(ctx context.Context, userID string, 
 		quizMap[quiz.ID.Hex()] = quiz
 	}
 
-	filteredCards := make([]QuizCard, 0)
+	allCards := make([]QuizCard, 0)
 	for _, attempt := range attempts {
 		quiz, exists := quizMap[attempt.QuizID.Hex()]
 		if !exists {
@@ -287,7 +301,7 @@ func (s *DashboardService) GetFailedQuizzes(ctx context.Context, userID string, 
 			continue
 		}
 
-		filteredCards = append(filteredCards, QuizCard{
+		allCards = append(allCards, QuizCard{
 			ID:        attempt.QuizID.Hex(),
 			Title:     quiz.Title,
 			Topic:     quiz.Topic,
@@ -297,23 +311,32 @@ func (s *DashboardService) GetFailedQuizzes(ctx context.Context, userID string, 
 		})
 	}
 
-	finalCards := filteredCards
-	adjustedTotalCount := totalCount
+	if needsAppLevelSorting && options.SortBy == "topic" {
+		sort.Slice(allCards, func(i, j int) bool {
+			if options.SortOrder == "asc" {
+				return strings.ToLower(allCards[i].Topic) < strings.ToLower(allCards[j].Topic)
+			}
+			return strings.ToLower(allCards[i].Topic) > strings.ToLower(allCards[j].Topic)
+		})
+	}
 
-	if options.Topic != "" {
-		adjustedTotalCount = int64(len(filteredCards))
+	finalCards := allCards
+	adjustedTotalCount := int64(len(allCards))
 
+	if needsAppLevelSorting || options.Topic != "" {
 		startIndex := (options.Page - 1) * options.PageSize
 		endIndex := startIndex + options.PageSize
 
-		if startIndex > len(filteredCards) {
+		if startIndex > len(allCards) {
 			finalCards = []QuizCard{}
 		} else {
-			if endIndex > len(filteredCards) {
-				endIndex = len(filteredCards)
+			if endIndex > len(allCards) {
+				endIndex = len(allCards)
 			}
-			finalCards = filteredCards[startIndex:endIndex]
+			finalCards = allCards[startIndex:endIndex]
 		}
+	} else {
+		adjustedTotalCount = totalCount
 	}
 
 	totalPages := 0
