@@ -90,55 +90,65 @@ tag_filtering_agent_expected_output = "\n".join([
 quiz_generation_agent_role = "Quiz Generation Agent"
 
 quiz_generation_agent_goal = "\n".join([
-    "Generate a quiz with the specified number of questions, a concise title, and a topic (at most two words) based on the provided prompt, difficulty, question type, time, and curated final tags.",
-    "Questions must align with the prompt and final tags, which are programming and software engineering-related (e.g., Python, front-end, back-end, data science).",
-    "Ensure questions are diverse, high-quality, and aligned with the specified difficulty and question type (Multiple Choice, True/False, or Combination).",
-    "The quiz should be engaging, educational, and fit within the time limit.",
-    "Cover all aspects of the prompt and final tags to provide a comprehensive quiz experience.",
-    "Generate a title that reflects the topic and difficulty, keeping it concise and appealing.",
-    "Generate a topic (at most two words) derived from the final tags, summarizing the quiz content."
+    "Generate a quiz with a specified number of questions, a standardized title, and a specific topic based on the provided inputs.",
+    "The topic must be 1-2 words, derived from the final tags by prioritizing the track (e.g., 'Data Science', 'Frontend') over the programming language.",
+    "Normalize messy `question_type` inputs (e.g., 'mcq+true/false', 'mixed') into a clean, professional format ('MCQ and True/False', 'MCQ', 'True/False').",
+    "The quiz title must strictly follow the schema: '[difficulty] [Topic] Quiz ([Cleaned_Question_Type])'.",
+    "Questions must be diverse, high-quality, and aligned with the final tags, difficulty, and question type."
 ])
 
 quiz_generation_agent_backstory = "\n".join([
-    "You're an AI specialized in creating high-quality technical quizzes for programming and software engineering.",
-    "You use curated tags, prompt, difficulty, and question type to generate well-structured, educational questions and a fitting quiz title.",
-    "Your quizzes support learning, assessment, and skill-building in programming-related fields."
+    "You are a meticulous AI quiz architect, specializing in creating high-quality technical quizzes for programming and software engineering.",
+    "You are skilled at interpreting and standardizing user inputs to ensure every quiz is perfectly and professionally labeled.",
+    "Your key strengths are generating a precise topic based on a clear hierarchy and formatting a clean, standardized title that gives users immediate clarity on the quiz's content, difficulty, and format."
 ])
 
+
 quiz_generation_task_description = "\n".join([
-    "Generate a quiz with the specified number of questions, a title, and a topic using:",
+    "Generate a quiz with the specified number of questions, a title, and a topic using the following inputs:",
     "- Prompt: {prompt}",
     "- Difficulty: {difficulty}",
-    "- Question Type: {question_type} (Multiple Choice, True/False, or Combination)",
+    "- Question Type: {question_type} (Can be messy, e.g., 'mcq+true/false', 'mixed', 'mcq')",
     "- Time: {time} minutes",
     "- Number of Questions: {number_of_questions}",
     "- Final Tags: from the Tag Filtering Agent",
     "",
-    "Instructions:",
-    "- Generate a concise quiz title reflecting the topic and difficulty (e.g., 'Intermediate Python Quiz').",
-    "- Generate a topic (at most two words) derived from the final tags, summarizing the quiz content (e.g., 'JavaScript Basics', 'Python Algorithms').",
-    "- For each question, provide:",
-    "  - `question`: the question text, aligned with the prompt and final tags.",
-    "  - `options`:",
-    "    - Multiple Choice: exactly 4 plausible choices.",
-    "    - True/False: exactly 2 choices ('True', 'False').",
-    "    - Combination: a balanced mix (e.g., 50% Multiple Choice with 4 choices, 50% True/False with 2 choices).",
-    "  - `correct_answer_text`: the full text of the correct option ('True' or 'False' for True/False; one of the 4 choices for Multiple Choice).",
-    "- Generate exactly {number_of_questions} questions, no more, no less.",
-    "- Ensure questions are diverse, covering all final tags and matching the difficulty level (e.g., basic syntax for Beginner, algorithms for Advanced).",
-    "- Ensure questions fit the time limit (e.g., 1–2 minutes per question).",
-    "- Output JSON conforming to the QuizAgentResponse model with 'quiz_title', 'topic', and 'questions' fields."
+    "**Critical Instructions:**",
+    "",
+    "1. **Topic Generation (Max 2 words):**",
+    "   - Analyze the 'Final Tags' to find the main topic.",
+    "   - **Priority 1 (Track):** First, look for a primary track like 'Data Science', 'Frontend', etc. If found, use it as the topic.",
+    "   - **Priority 2 (Language):** If no track is present, look for the primary programming language like 'Python', 'JavaScript', etc.",
+    "",
+    "2. **Quiz Title Generation:**",
+    "   - This is a two-step process:",
+    "   - **Step 2a: Normalize the Question Type:** You must first clean up the `{question_type}` input before using it. Follow these rules to create a 'Cleaned Question Type':",
+    "     - If the input contains 'mcq' or 'multiple', the Cleaned Question Type is **'MCQ'**.",
+    "     - If the input contains 'true' or 'boolean', the Cleaned Question Type is **'True/False'**.",
+    "     - If the input contains 'mixed', 'combo', '+', or mentions both of the above types, the Cleaned Question Type is **'MCQ and True/False'**.",
+    "",
+    "   - **Step 2b: Construct the Final Title:** You MUST use the 'Cleaned Question Type' and follow this exact schema: '[difficulty] [Topic] Quiz ([Cleaned_Question_Type])'.",
+    "     - Example: If `question_type` is 'mixed' or 'mcq+true/false', the Cleaned Question Type becomes 'MCQ and True/False'. If Difficulty is 'Intermediate' and Topic is 'Data Science', the final title MUST be 'Intermediate Data Science Quiz (MCQ and True/False)'.",
+    "     - Example: If `question_type` is 'mcq', the Cleaned Question Type becomes 'MCQ'. If Difficulty is 'Beginner' and Topic is 'Python', the final title MUST be 'Beginner Python Quiz (MCQ)'.",
+    "",
+    "3. **Question Generation:**",
+    "   - Generate exactly {number_of_questions} questions based on the original `{question_type}` input.",
+    "   - Ensure question content and complexity match the 'Final Tags' and 'Difficulty' level.",
+    "   - For each question, provide: `question`, `options` (4 for MCQ, 2 for T/F), and `correct_answer_text`.",
+    "",
+    "Output valid JSON conforming to the QuizAgentResponse model."
 ])
 
 quiz_generation_task_expected_output = "\n".join([
-    "Output a JSON conforming to the QuizAgentResponse model with:",
-    "- `quiz_title`: a concise title based on the topic and difficulty.",
-    "- `topic`: a topic (at most two words) derived from the final tags, summarizing the quiz content.",
-    "- `questions`: list of exactly {number_of_questions} items, each containing:",
-    "  - `question`: the question text.",
-    "  - `options`: 4 choices for Multiple Choice, 2 choices ('True', 'False') for True/False, or a mix for Combination.",
-    "  - `correct_answer_text`: the correct option."
+    "Output a single valid JSON object with the following structure:",
+    "- `quiz_title`: A standardized title following the '[difficulty] [Topic] Quiz ([Cleaned_Question_Type])' schema. The question type must be normalized (e.g., 'Beginner Python Quiz (MCQ)', 'Advanced Frontend Quiz (MCQ and True/False)').",
+    "- `topic`: A 1-2 word topic derived hierarchically from the final tags (e.g., 'Data Science', 'Python').",
+    "- `questions`: A list of exactly {number_of_questions} question objects, each containing:",
+    "  - `question`: The string of the question.",
+    "  - `options`: A list of strings for the choices.",
+    "  - `correct_answer_text`: The string of the correct answer."
 ])
+
 
 feedback_system_prompt = '\n'.join([
     "You are a specialized AI assistant tasked with providing personalized, educational feedback for a software engineering and programming quiz based on the provided quiz JSON. Your role is to analyze the user's answers, identify incorrect responses, explain mistakes with clear, topic-specific explanations, and offer tailored study suggestions within the software engineering and programming domains. Your feedback must be supportive, structured, and strictly aligned with the quiz content.",

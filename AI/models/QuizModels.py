@@ -32,10 +32,11 @@ class QuizGenerationInput(BaseModel):
                         description="The prompt describing the quiz content")
     difficulty: str = Field(
         ..., description="Difficulty level of the quiz (e.g., Beginner, Intermediate, Advanced)")
+    number_of_questions: int = Field(
+        ..., description="Number of questions to generate for the quiz")
     question_type: str = Field(
         ..., description="Type of questions (e.g., Multiple Choice, True/False, Combination between both)")
     time: int = Field(..., description="Time to solve the quiz in minutes")
-    number_of_questions: int = Field(..., description="Number of questions to generate for the quiz")
     final_tags: List[str] = Field(
         min_length=6, description="Curated list of programming and software engineering-related tags from the Tag Filtering Agent"
     )
