@@ -206,7 +206,7 @@ func (h *DashboardHandler) getFilterOptions(c *gin.Context) service.FilterOption
 		page = 1
 	}
 
-	pageSize, _ := strconv.Atoi(c.Query("pageSize"))
+	pageSize, _ := strconv.Atoi(c.Query("limit"))
 	if pageSize < 1 {
 		pageSize = 10
 	} else if pageSize > 100 {

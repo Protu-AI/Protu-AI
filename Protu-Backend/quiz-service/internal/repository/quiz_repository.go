@@ -197,10 +197,14 @@ func (r *QuizRepository) GetQuizzesByUserIDAndStatusPaginated(ctx context.Contex
 	return quizzes, totalCount, nil
 }
 
-func (r *QuizRepository) GetQuizzesByUserIDAndStatusesPaginated(ctx context.Context, userID string, statuses []string, page, pageSize int) ([]*models.Quiz, int64, error) {
+func (r *QuizRepository) GetQuizzesByUserIDAndStatusesPaginated(ctx context.Context, userID string, statuses []string, page, pageSize int, topic, sortBy, sortOrder string) ([]*models.Quiz, int64, error) {
 	filter := bson.M{
 		"userId": userID,
 		"status": bson.M{"$in": statuses},
+	}
+
+	if topic != "" {
+		filter["topic"] = bson.M{"$regex": primitive.Regex{Pattern: topic, Options: "i"}}
 	}
 
 	totalCount, err := r.collection.CountDocuments(ctx, filter)
@@ -223,8 +227,28 @@ func (r *QuizRepository) GetQuizzesByUserIDAndStatusesPaginated(ctx context.Cont
 		"publishedAt":       1,
 	}
 
+	sortField := "createdAt"
+	sortDirection := -1
+
+	if sortBy != "" {
+		switch sortBy {
+		case "title":
+			sortField = "title"
+		case "topic":
+			sortField = "topic"
+		case "dateTaken", "createdAt":
+			sortField = "createdAt"
+		default:
+			sortField = "createdAt"
+		}
+	}
+
+	if sortOrder == "asc" {
+		sortDirection = 1
+	}
+
 	opts := options.Find().
-		SetSort(bson.M{"createdAt": -1}).
+		SetSort(bson.M{sortField: sortDirection}).
 		SetSkip(int64(skip)).
 		SetLimit(int64(pageSize)).
 		SetProjection(projection)
