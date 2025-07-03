@@ -3,6 +3,7 @@ package org.protu.contentservice.track;
 import org.protu.contentservice.common.exception.custom.EntityNotFoundException;
 import org.protu.contentservice.course.CourseDto;
 import org.protu.contentservice.course.CourseRepository;
+import org.protu.contentservice.course.CourseWithTotalLessons;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -171,7 +172,7 @@ public class TrackRepository {
         .update();
   }
 
-  public Optional<List<CourseDto>> findCoursesByTrackName(String trackName) {
+  public Optional<List<CourseWithTotalLessons>> findCoursesByTrackName(String trackName) {
     TrackWithCourses track = findByName(trackName)
         .orElseThrow(() -> new EntityNotFoundException("Track", trackName));
 
@@ -181,16 +182,19 @@ public class TrackRepository {
                 c.id,
                 c.name,
                 c.description,
-                c.pic_url AS picUrl
+                c.pic_url AS picUrl,
+                COUNT(cl.lesson_id) AS totalLessons
               FROM courses AS c
               JOIN tracks_courses AS tc ON tc.course_id = c.id
+              LEFT JOIN courses_lessons AS cl ON cl.course_id = c.id
               WHERE tc.track_id = :trackId
+              GROUP BY c.id, c.name, c.description, c.pic_url
             """)
-        .param("name", trackName)
         .param("trackId", track.id())
-        .query(CourseDto.class)
+        .query(CourseWithTotalLessons.class)
         .list());
   }
+
 
   public void addCourseToTrack(String trackName, String courseName) {
     Track track = findByNameOrThrow(trackName);

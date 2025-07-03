@@ -1,7 +1,7 @@
 package org.protu.contentservice.track;
 
 import org.protu.contentservice.common.exception.custom.EntityNotFoundException;
-import org.protu.contentservice.course.CourseDto;
+import org.protu.contentservice.course.CourseWithTotalLessons;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
@@ -63,7 +63,7 @@ public class TrackService {
 
   @Transactional(readOnly = true)
   @Cacheable(value = CACHE_TRACK_COURSES, key = "#trackName", unless = "#result == null || #result.isEmpty()")
-  public List<CourseDto> getAllCoursesForTrack(String trackName) {
+  public List<CourseWithTotalLessons> getAllCoursesForTrack(String trackName) {
     return tracks.findCoursesByTrackName(trackName).orElse(null);
   }
 
