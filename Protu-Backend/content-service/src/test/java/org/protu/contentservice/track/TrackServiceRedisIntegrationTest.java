@@ -4,7 +4,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.protu.contentservice.RedisCacheHelper;
 import org.protu.contentservice.config.RedisContainerConfig;
-import org.protu.contentservice.course.CourseDto;
+import org.protu.contentservice.course.CourseWithTotalLessons;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
@@ -59,8 +59,8 @@ public class TrackServiceRedisIntegrationTest {
     );
   }
 
-  private List<CourseDto> createTestCourseList() {
-    return List.of(new CourseDto(1, "any", "any", "any"));
+  private List<CourseWithTotalLessons> createTestCourseList() {
+    return List.of(new CourseWithTotalLessons(1, "any", "any", "any", 1));
   }
 
   private TrackRequest createTestTrackRequest() {
