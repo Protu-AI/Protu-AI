@@ -204,7 +204,7 @@ func (r *AttemptRepository) GetBestAttemptsByUserIDWithPagination(ctx context.Co
 		} else {
 			sortStage["$sort"].(bson.M)["score"] = -1
 		}
-	case "completedAt":
+	case "dateTaken", "completedAt":
 		if sortOrder == "asc" {
 			sortStage["$sort"].(bson.M)["completedAt"] = 1
 		} else {

@@ -1,6 +1,6 @@
 const path = require('path');
 const fs = require('fs');
-const { getAIResponse } = require('../services/aiService');
+const { getAIResponse, generateChatTitle } = require('../services/aiService');
 const messageService = require('../services/messageService');
 const { asyncWrapper } = require('../middleware/errorMiddleware');
 const { buildResponse } = require('../utils/responseHelper');
@@ -137,13 +137,30 @@ const createMessageWithAutoChat = asyncWrapper(async (req, res) => {
       aiResponse.answer
     );
 
+    let finalChatName = chat.name;
+    if (!chatId) {
+      try {
+        const aiGeneratedTitle = await generateChatTitle(targetChatId);
+        if (aiGeneratedTitle) {
+          const updatedChat = await chatService.updateChatName(
+            targetChatId,
+            userId,
+            aiGeneratedTitle
+          );
+          finalChatName = updatedChat.name;
+        }
+      } catch (titleError) {
+        console.error('Failed to generate AI chat title:', titleError);
+      }
+    }
+
     res.status(201).json(
       buildResponse(
         req,
         'CREATED',
         {
           chatId: targetChatId,
-          chatName: chat.name,
+          chatName: finalChatName,
           userMessage,
           aiMessage
         },

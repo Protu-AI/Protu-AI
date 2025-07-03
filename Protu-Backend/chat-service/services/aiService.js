@@ -37,6 +37,38 @@ const getAIResponse = async (chatId, hasAttachment) => {
   }
 };
 
+const generateChatTitle = async chatId => {
+  try {
+    const response = await axios.post(
+      `${AI_BASE_URL}/protu/ai/data/chat_title`,
+      {
+        chat_id: chatId
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        timeout: 15000
+      }
+    );
+
+    if (!response.data || !response.data.chat_title) {
+      throw new Error('No chat title received from AI service');
+    }
+
+    return response.data.chat_title;
+  } catch (error) {
+    console.error('Error generating chat title:', {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data
+    });
+
+    return null;
+  }
+};
+
 module.exports = {
-  getAIResponse
+  getAIResponse,
+  generateChatTitle
 };

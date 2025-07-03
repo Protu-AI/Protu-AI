@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -33,9 +34,20 @@ type UserEventMessage struct {
 }
 
 type UserEventData struct {
-	ID       string   `json:"id,omitempty"`
-	PublicID string   `json:"publicId"`
-	Roles    []string `json:"roles"`
+	ID       int    `json:"id,omitempty"`
+	PublicID string `json:"publicId"`
+	Roles    string `json:"roles"`
+}
+
+func (u *UserEventData) GetRolesAsSlice() []string {
+	if u.Roles == "" {
+		return []string{}
+	}
+	roles := strings.Split(u.Roles, ",")
+	for i, role := range roles {
+		roles[i] = strings.TrimSpace(role)
+	}
+	return roles
 }
 
 func NewRabbitMQService(url string, userRepo repository.UserRepository) *RabbitMQService {
@@ -182,7 +194,7 @@ func (r *RabbitMQService) processMessage(msg amqp.Delivery) error {
 	case USER_CREATED_KEY, USER_UPDATED_KEY:
 		user := &models.User{
 			PublicID: userData.PublicID,
-			Roles:    userData.Roles,
+			Roles:    userData.GetRolesAsSlice(),
 		}
 		err = r.userRepository.CreateOrUpdate(ctx, user)
 		if err != nil {
