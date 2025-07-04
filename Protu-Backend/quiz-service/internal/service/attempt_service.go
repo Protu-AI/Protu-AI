@@ -67,33 +67,33 @@ func (s *AttemptService) CreateAttempt(ctx context.Context, attempt *models.Quiz
 	return attempt, nil
 }
 
-func (s *AttemptService) SubmitAttempt(ctx context.Context, id string, answers []models.Answer) (*models.QuizAttempt, error) {
+func (s *AttemptService) SubmitAttempt(ctx context.Context, id string, answers []models.Answer) (*models.QuizAttempt, int, int, error) {
 	attempt, err := s.attemptRepo.GetAttemptByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, repository.ErrAttemptNotFound) {
-			return nil, ErrAttemptNotFound
+			return nil, 0, 0, ErrAttemptNotFound
 		}
-		return nil, err
+		return nil, 0, 0, err
 	}
 
 	quiz, err := s.quizRepo.GetQuizByID(ctx, attempt.QuizID.Hex())
 	if err != nil {
 		if errors.Is(err, repository.ErrQuizNotFound) {
-			return nil, ErrQuizNotFoundForAttempt
+			return nil, 0, 0, ErrQuizNotFoundForAttempt
 		}
-		return nil, err
+		return nil, 0, 0, err
 	}
 
-	s.scoreAttempt(quiz, attempt, answers)
+	correct, incorrect := s.scoreAttempt(quiz, attempt, answers)
 
 	if err := s.attemptRepo.UpdateAttempt(ctx, attempt); err != nil {
-		return nil, ErrSubmitAttemptFailed
+		return nil, 0, 0, ErrSubmitAttemptFailed
 	}
 
-	return attempt, nil
+	return attempt, correct, incorrect, nil
 }
 
-func (s *AttemptService) scoreAttempt(quiz *models.Quiz, attempt *models.QuizAttempt, answers []models.Answer) {
+func (s *AttemptService) scoreAttempt(quiz *models.Quiz, attempt *models.QuizAttempt, answers []models.Answer) (int, int) {
 	questionMap := make(map[string]*models.Question, len(quiz.Questions))
 	for i := range quiz.Questions {
 		questionMap[quiz.Questions[i].ID.Hex()] = &quiz.Questions[i]
@@ -110,6 +110,30 @@ func (s *AttemptService) scoreAttempt(quiz *models.Quiz, attempt *models.QuizAtt
 			if isCorrect {
 				correctAnswers++
 			}
+
+			answers[i].QuestionText = question.QuestionText
+			answers[i].Order = question.Order
+			answers[i].Explanation = "This is a placeholder explanation."
+
+			for _, opt := range question.Options {
+				if opt.IsCorrect {
+					answers[i].CorrectAnswer = opt.Text
+					break
+				}
+			}
+
+			if selectedIndex, ok := answers[i].Selected.(float64); ok {
+				index := int(selectedIndex)
+				if index >= 0 && index < len(question.Options) {
+					answers[i].SelectedAnswer = question.Options[index].Text
+				}
+			} else if selectedIndex, ok := answers[i].Selected.(int); ok {
+				if selectedIndex >= 0 && selectedIndex < len(question.Options) {
+					answers[i].SelectedAnswer = question.Options[selectedIndex].Text
+				}
+			} else if selectedText, ok := answers[i].Selected.(string); ok {
+				answers[i].SelectedAnswer = selectedText
+			}
 		}
 	}
 
@@ -125,6 +149,9 @@ func (s *AttemptService) scoreAttempt(quiz *models.Quiz, attempt *models.QuizAtt
 	attempt.Passed = score >= 60
 	attempt.TimeTaken = int(now.Sub(attempt.StartedAt).Seconds())
 	attempt.Status = models.AttemptStatusCompleted
+
+	incorrectAnswers := totalQuestions - correctAnswers
+	return correctAnswers, incorrectAnswers
 }
 
 func evaluateAnswer(question *models.Question, answer models.Answer) bool {

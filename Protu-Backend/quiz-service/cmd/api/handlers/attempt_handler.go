@@ -201,30 +201,49 @@ func (h *AttemptHandler) SubmitAttempt(c *gin.Context) {
 		})
 	}
 
-	submittedAttempt, err := h.attemptService.SubmitAttempt(c, attemptID, answers)
+	submittedAttempt, correctAnswers, incorrectAnswers, err := h.attemptService.SubmitAttempt(c, attemptID, answers)
 	if err != nil {
 		apiResponse.Error(c, errors.QuizSubmissionError("Failed to submit attempt", err.Error()))
 		return
 	}
 
-	var aiFeedback string
-	feedback, err := h.aiService.GetQuizFeedback(c, quiz, answers)
-	if err != nil {
-		aiFeedback = "AI feedback is currently unavailable."
-	} else {
-		aiFeedback = feedback
+	questionReviews := make([]response.QuestionReview, len(submittedAttempt.Answers))
+	for i, ans := range submittedAttempt.Answers {
+		var questionType string
+		var options []string
+		if q, ok := questionMap[ans.QuestionID.Hex()]; ok {
+			questionType = q.QuestionType
+			options = make([]string, len(q.Options))
+			for j, opt := range q.Options {
+				options[j] = opt.Text
+			}
+		}
+
+		questionReviews[i] = response.QuestionReview{
+			QuestionID:     ans.QuestionID.Hex(),
+			QuestionText:   ans.QuestionText,
+			QuestionType:   questionType,
+			Options:        options,
+			SelectedAnswer: ans.SelectedAnswer,
+			CorrectAnswer:  ans.CorrectAnswer,
+			IsCorrect:      ans.IsCorrect,
+			Explanation:    ans.Explanation,
+			Order:          ans.Order,
+		}
 	}
 
 	reviewResponse := response.QuizReviewResponse{
-		AttemptID:   submittedAttempt.ID.Hex(),
-		QuizID:      submittedAttempt.QuizID.Hex(),
-		QuizTitle:   quiz.Title,
-		QuizTopic:   quiz.Topic,
-		Score:       submittedAttempt.Score,
-		Passed:      submittedAttempt.Passed,
-		TimeTaken:   submittedAttempt.TimeTaken,
-		CompletedAt: submittedAttempt.CompletedAt,
-		AIFeedback:  aiFeedback,
+		AttemptID:             submittedAttempt.ID.Hex(),
+		QuizID:                submittedAttempt.QuizID.Hex(),
+		QuizTitle:             quiz.Title,
+		QuizTopic:             quiz.Topic,
+		Score:                 submittedAttempt.Score,
+		Passed:                submittedAttempt.Passed,
+		TimeTaken:             submittedAttempt.TimeTaken,
+		CompletedAt:           submittedAttempt.CompletedAt,
+		CorrectAnswersCount:   correctAnswers,
+		IncorrectAnswersCount: incorrectAnswers,
+		QuestionReviews:       questionReviews,
 	}
 
 	apiResponse.AttemptSubmitted(c, reviewResponse)
