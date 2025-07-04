@@ -24,13 +24,27 @@ type QuizStartResponse struct {
 }
 
 type QuizReviewResponse struct {
-	AttemptID   string    `json:"attemptId"`
-	QuizID      string    `json:"quizId"`
-	QuizTitle   string    `json:"quizTitle"`
-	QuizTopic   string    `json:"quizTopic"`
-	Score       float64   `json:"score"`
-	Passed      bool      `json:"passed"`
-	TimeTaken   int       `json:"timeTaken"`
-	CompletedAt time.Time `json:"completedAt"`
-	AIFeedback  string    `json:"aiFeedback,omitempty"`
+	AttemptID             string           `json:"attemptId"`
+	QuizID                string           `json:"quizId"`
+	QuizTitle             string           `json:"quizTitle"`
+	QuizTopic             string           `json:"quizTopic"`
+	Score                 float64          `json:"score"`
+	Passed                bool             `json:"passed"`
+	TimeTaken             int              `json:"timeTaken"`
+	CompletedAt           time.Time        `json:"completedAt"`
+	CorrectAnswersCount   int              `json:"correctAnswersCount"`
+	IncorrectAnswersCount int              `json:"incorrectAnswersCount"`
+	QuestionReviews       []QuestionReview `json:"questionReviews"`
+}
+
+type QuestionReview struct {
+	QuestionID     string   `json:"questionId"`
+	QuestionText   string   `json:"questionText"`
+	QuestionType   string   `json:"questionType"`
+	Options        []string `json:"options"`
+	SelectedAnswer string   `json:"selectedAnswer"`
+	CorrectAnswer  string   `json:"correctAnswer"`
+	IsCorrect      bool     `json:"isCorrect"`
+	Explanation    string   `json:"explanation,omitempty"`
+	Order          int      `json:"order"`
 }

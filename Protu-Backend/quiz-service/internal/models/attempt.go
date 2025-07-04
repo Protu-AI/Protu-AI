@@ -27,7 +27,12 @@ type QuizAttempt struct {
 }
 
 type Answer struct {
-	QuestionID primitive.ObjectID `bson:"questionId" json:"questionId"`
-	Selected   interface{}        `bson:"selected" json:"selected"`
-	IsCorrect  bool               `bson:"isCorrect" json:"isCorrect"`
+	QuestionID     primitive.ObjectID `bson:"questionId" json:"questionId"`
+	QuestionText   string             `bson:"questionText" json:"questionText"`
+	Selected       interface{}        `bson:"selected" json:"selected"`
+	SelectedAnswer string             `bson:"selectedAnswer" json:"selectedAnswer"`
+	CorrectAnswer  string             `bson:"correctAnswer" json:"correctAnswer"`
+	IsCorrect      bool               `bson:"isCorrect" json:"isCorrect"`
+	Explanation    string             `bson:"explanation" json:"explanation"`
+	Order          int                `bson:"order" json:"order"`
 }
