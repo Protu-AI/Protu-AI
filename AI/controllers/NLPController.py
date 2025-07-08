@@ -17,6 +17,8 @@ from time import sleep
 
 from logging import getLogger
 
+from types import SimpleNamespace
+
 
 class NLPController(BaseController):
 
@@ -29,10 +31,20 @@ class NLPController(BaseController):
         self.generation_model = generation_model
         self.embedding_model = embedding_model
 
+        self.logger = getLogger('uvicorn')
+
     def get_file_and_store_into_vectordb(self, chat_id: str):
-        db_controller = DBController()
+        db_controller = DBController(
+            db_name=self.app_settings.DB_NAME,
+            db_user=self.app_settings.DB_USER,
+            db_password=self.app_settings.DB_PASSWORD,
+            db_host=self.app_settings.DB_HOST,
+            db_port=self.app_settings.DB_PORT
+        )
 
         file_path = db_controller.get_file_path(chat_id=chat_id)
+
+        print(f"File path: {file_path}")
 
         process_controller = ProcessController()
 
@@ -119,10 +131,18 @@ class NLPController(BaseController):
 
     def get_memory_summary_and_query(self, chat_id: str):
 
-        db_controller = DBController()
+        db_controller = DBController(
+            db_name=self.app_settings.DB_NAME,
+            db_user=self.app_settings.DB_USER,
+            db_password=self.app_settings.DB_PASSWORD,
+            db_host=self.app_settings.DB_HOST,
+            db_port=self.app_settings.DB_PORT
+        )
 
         all_messages = db_controller.get_all_messages_by_chat_id(
             chat_id=chat_id)
+
+        print(f"All messages: {all_messages}")
 
         combined_messages = [
             {
@@ -136,6 +156,7 @@ class NLPController(BaseController):
                           content in all_messages[:-1]])
             }
         ]
+
         last_prompt = all_messages[-1][1]
 
         if len(all_messages) == 1:
@@ -220,6 +241,55 @@ class NLPController(BaseController):
         )
 
         return full_prompt, chat_history, answer
+
+    def index_courses_into_vectordb(self, chat_id: str = 'courses'):
+
+        db_controller = DBController(
+            db_name=self.app_settings.COURSES_DB_NAME,
+            db_user=self.app_settings.COURSES_DB_USER,
+            db_password=self.app_settings.COURSES_DB_PASSWORD,
+            db_host=self.app_settings.COURSES_DB_HOST,
+            db_port=self.app_settings.COURSES_DB_PORT
+        )
+
+        all_courses = db_controller.get_all_courses()
+
+        print(f"All courses: {all_courses}")
+
+        if not all_courses or len(all_courses) == 0:
+            self.logger.error(
+                "Error in getting all courses from the database.")
+
+        chunks = []
+
+        for course_id, course_name, course_description in all_courses:
+
+            page_content = f"Course Name: {course_name}. Description: {course_description}"
+
+            metadata = {
+                'source': str(course_id)
+            }
+
+            chunk_object = SimpleNamespace(
+                page_content=page_content, metadata=metadata
+            )
+
+            chunks.append(
+                chunk_object
+            )
+
+        done = self.index_into_vector_db(
+            chat_id=chat_id,
+            chunks=chunks,
+            do_reset=True
+        )
+
+        if not done:
+            self.logger.error("Error in indexing courses into vector DB.")
+            return False
+
+        self.logger.info("Courses indexed successfully into vector DB.")
+        return True
 
     def get_quiz_feedback(self, inputs: FeedbackInput):
 

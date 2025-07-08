@@ -16,3 +16,4 @@ class ResponseSignal(Enum):
     LLM_GENERATION_FAILED = "LLM generation failed"
     AGENT_RESPONSE_SUCCESS = "Agent response successful"
     AGENT_RESPONSE_FAILED = "Agent response failed"
+    AGENT_CREW_CREATION_FAILED = "Agent crew creation failed"

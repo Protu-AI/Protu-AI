@@ -18,6 +18,12 @@ class Settings(BaseSettings):
     DB_PORT: int
     DB_NAME: str
 
+    COURSES_DB_USER: str
+    COURSES_DB_PASSWORD: str
+    COURSES_DB_HOST: str
+    COURSES_DB_PORT: int
+    COURSES_DB_NAME: str
+
     GENERATION_BACKEND: str
     EMBEDDING_BACKEND: str
 

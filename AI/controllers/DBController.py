@@ -6,7 +6,7 @@ from .utils import get_template_by_name
 
 class DBController(BaseController):
 
-    def __init__(self):
+    def __init__(self, db_name, db_user, db_password, db_host, db_port):
         super().__init__()
         self.db_connection = self.db_connect()
         self.db_cursor = self.db_connection.cursor()
@@ -15,14 +15,20 @@ class DBController(BaseController):
             "controllers/utils/queries.json"
         )
 
+        self.db_name = db_name
+        self.db_user = db_user
+        self.db_password = db_password
+        self.db_host = db_host
+        self.db_port = db_port
+
     def db_connect(self):
         try:
             return psycopg2.connect(
-                dbname=self.app_settings.DB_NAME,
-                user=self.app_settings.DB_USER,
-                password=self.app_settings.DB_PASSWORD,
-                host=self.app_settings.DB_HOST,
-                port=self.app_settings.DB_PORT
+                dbname=self.db_name,
+                user=self.db_user,
+                password=self.db_password,
+                host=self.db_host,
+                port=self.db_port
             )
         except Exception as e:
             print(e)
@@ -61,13 +67,22 @@ class DBController(BaseController):
         message_id, content = self.get_last_message_by_chat_id(chat_id=chat_id)[
             0]
 
-
         if message_id is not None:
 
             file_path, file_type = self.get_attached_file_by_message_id(
                 message_id=message_id)[0]
 
             return file_path
+
+    def get_all_courses(self):
+
+        get_courses_query = get_template_by_name(
+            self.queries_dir, "get_courses")
+
+        if get_courses_query is not None:
+            return self.execute_query(get_courses_query, ())
+        else:
+            print("get_courses query is None")
 
     def db_disconnect(self):
         self.db_cursor.close()
