@@ -7,6 +7,8 @@ from models import TagAgentInput, FeedbackInput
 
 from controllers.Enums import ResponseSignal
 
+from stores.agents.tools import retrieve_courses_tool
+
 from .schemas import *
 
 import logging
@@ -77,29 +79,71 @@ async def create_quiz(request: Request, quiz_request: QuizAgentInput):
 @quiz_router.post("/quiz-feedback")
 async def create_quiz_feedback(request: Request, quiz_feedback_request: FeedbackInput):
 
-    nlp_controller = NLPController(
-        vectordb_client=request.app.vectordb_client,
-        generation_model=request.app.generation_model,
-        embedding_model=request.app.embedding_model,
+    agents_controller = request.app.agents_controller
+
+    nlp_controller = request.app.nlp_controller
+
+    courses_retriever_tool = retrieve_courses_tool(
+        nlp_controller=nlp_controller
     )
 
-    feedback_response = nlp_controller.get_quiz_feedback(
+    # retrieve_content = nlp_controller.search_vector_db_collection(
+    #     chat_id='courses',
+    #     text="evaluation metrics for imbalanced classification",
+    #     limit=3
+    # )
+
+    # print(retrieve_content)
+
+    # processed_results = []
+    # for doc in retrieve_content:
+    #     course_id = int(doc.metadata)
+    #     processed_results.append({
+    #         "course_id": course_id,
+    #         "relevance_score": doc.score
+    #     })
+
+    # print(processed_results)
+
+    crew_created = agents_controller.create_quiz_feedback_recommendation_crew(
+        tools=[courses_retriever_tool]
+    )
+
+    if not crew_created:
+        logger.error("Error in creating quiz feedback recommendation crew")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                'signal': ResponseSignal.AGENT_CREW_CREATION_FAILED.value,
+            }
+        )
+
+    feedback_response = agents_controller.create_quiz_feedback_recommendation(
         inputs=quiz_feedback_request
     )
+
+    feedback_message, detailed_explanations, recommended_course_ids = feedback_response[
+        'feedback_message'], feedback_response['detailed_explanations'], feedback_response['recommended_course_ids']
+    
+    # feedback_response = nlp_controller.get_quiz_feedback(
+    #     inputs=quiz_feedback_request
+    # )
 
     if feedback_response is None:
         logger.error("Error in creating quiz feedback")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={
-                'signal': ResponseSignal.LLM_GENERATION_FAILED.value,
+                'signal': ResponseSignal.AGENT_RESPONSE_FAILED.value,
             }
         )
 
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content={
-            'signal': ResponseSignal.LLM_GENERATION_SUCCESS.value,
-            'feedback': feedback_response,
+            'signal': ResponseSignal.AGENT_RESPONSE_SUCCESS.value,
+            'feedback_message': feedback_message,
+            'detailed_explanations': detailed_explanations,
+            'recommended_course_ids': recommended_course_ids
         }
     )

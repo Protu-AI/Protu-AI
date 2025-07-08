@@ -27,11 +27,7 @@ logger = logging.getLogger("uvicorn.error")
 async def process_end(request: Request, process_request: ProcessRequest):
     chat_id, is_attached = process_request.chat_id, process_request.is_attached
 
-    nlp_controller = NLPController(
-        vectordb_client=request.app.vectordb_client,
-        generation_model=request.app.generation_model,
-        embedding_model=request.app.embedding_model,
-    )
+    nlp_controller = request.app.nlp_controller
 
     if is_attached:
         _ = nlp_controller.get_file_and_store_into_vectordb(chat_id=chat_id)

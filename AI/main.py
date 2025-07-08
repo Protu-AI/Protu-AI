@@ -20,7 +20,6 @@ async def startup_spam():
     agentops.init(
         api_key=settings.AGENTOPS_API_KEY,
     )
-    app.db_controller = DBController()
 
     llm_factory_provider = LLMFactoryProvider(config=settings)
     vectordb_factory_provider = VectorDBFactoryProvider(config=settings)
@@ -43,6 +42,15 @@ async def startup_spam():
         provider=settings.VECTOR_DB_BACKEND
     )
     app.vectordb_client.connect()
+
+    # NLP Controller
+    app.nlp_controller = NLPController(
+        vectordb_client=app.vectordb_client,
+        generation_model=app.generation_model,
+        embedding_model=app.embedding_model,
+    )
+
+    app.nlp_controller.index_courses_into_vectordb()
 
     # Agents Controller
     app.agents_controller = AgentsController()

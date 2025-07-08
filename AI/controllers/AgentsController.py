@@ -13,6 +13,12 @@ from prompts import *
 
 from routes.schemas import QuizAgentInput
 
+from typing import List, Optional
+
+from crewai.tools import BaseTool
+
+from logging import getLogger
+
 
 class AgentsController(BaseController):
 
@@ -29,6 +35,10 @@ class AgentsController(BaseController):
         self.quiz_generation_crew = self.create_quiz_generation_crew()
 
         self.chat_title_generation_crew = self.create_chat_title_generation_crew()
+
+        self.quiz_feedback_recommendation_crew = None
+
+        self.logger = getLogger('uvicorn')
 
     def create_tag_suggestion_crew(self):
 
@@ -166,3 +176,68 @@ class AgentsController(BaseController):
             raise ValueError("No output received from the crew.")
 
         return crew_output['chat_title']
+
+    def create_quiz_feedback_recommendation_crew(self, tools: Optional[List[BaseTool]] = None):
+
+        weakness_analyzer_agent = AgentBuilder().create_agent(
+            agent_role=weakness_analyzer_agent_role,
+            agent_goal=weakness_analyzer_agent_goal,
+            agent_backstory=weakness_analyzer_agent_backstory,
+            agent_tools=tools,
+            agent_llm=self.llm
+        )
+
+        weakness_analyzer_task = TaskBuilder().create_task(
+            task_description=weakness_analyzer_task_description,
+            expected_output=weakness_analyzer_task_expected_output,
+            output_json=WeaknessAnalyzerOutput,
+            task_agent=weakness_analyzer_agent
+        )
+
+        feedback_synthesizer_agent = AgentBuilder().create_agent(
+            agent_role=feedback_synthesizer_agent_role,
+            agent_goal=feedback_synthesizer_agent_goal,
+            agent_backstory=feedback_synthesizer_agent_backstory,
+            agent_llm=self.llm
+        )
+
+        feedback_synthesizer_task = TaskBuilder().create_task(
+            task_description=feedback_synthesizer_task_description,
+            expected_output=feedback_synthesizer_task_expected_output,
+            output_json=FeedbackSynthesizerOutput,
+            task_agent=feedback_synthesizer_agent,
+            context=[weakness_analyzer_task]
+        )
+
+        self.quiz_feedback_recommendation_crew = CrewAIBuilder(
+            crew_tasks=[weakness_analyzer_task, feedback_synthesizer_task],
+            crew_agents=[weakness_analyzer_agent, feedback_synthesizer_agent],
+        ).create_crew()
+
+        return self.quiz_feedback_recommendation_crew
+
+    def create_quiz_feedback_recommendation(self, inputs: FeedbackInput):
+        if not hasattr(self, 'quiz_feedback_recommendation_crew'):
+            self.logger.error(
+                "Quiz feedback crew has not been created yet. Please ensure it is initialized before proceeding."
+            )
+            return None
+
+        crew_output = self.quiz_feedback_recommendation_crew.kickoff(
+            inputs=inputs.model_dump()
+        )
+
+        if (
+            crew_output is None or
+            crew_output['feedback_message'] is None or
+            crew_output['detailed_explanations'] is None or
+            len(crew_output['detailed_explanations']) == 0 or
+            crew_output['recommended_course_ids'] is None
+        ):
+
+            self.logger.error(
+                "Error in quiz feedback recommendation crew output. Please check the inputs and crew configuration."
+            )
+            return None
+
+        return crew_output
