@@ -24,17 +24,19 @@ type QuizStartResponse struct {
 }
 
 type QuizReviewResponse struct {
-	AttemptID             string           `json:"attemptId"`
-	QuizID                string           `json:"quizId"`
-	QuizTitle             string           `json:"quizTitle"`
-	QuizTopic             string           `json:"quizTopic"`
-	Score                 float64          `json:"score"`
-	Passed                bool             `json:"passed"`
-	TimeTaken             int              `json:"timeTaken"`
-	CompletedAt           time.Time        `json:"completedAt"`
-	CorrectAnswersCount   int              `json:"correctAnswersCount"`
-	IncorrectAnswersCount int              `json:"incorrectAnswersCount"`
-	QuestionReviews       []QuestionReview `json:"questionReviews"`
+	AttemptID             string              `json:"attemptId"`
+	QuizID                string              `json:"quizId"`
+	QuizTitle             string              `json:"quizTitle"`
+	QuizTopic             string              `json:"quizTopic"`
+	Score                 float64             `json:"score"`
+	Passed                bool                `json:"passed"`
+	TimeTaken             int                 `json:"timeTaken"`
+	CompletedAt           time.Time           `json:"completedAt"`
+	CorrectAnswersCount   int                 `json:"correctAnswersCount"`
+	IncorrectAnswersCount int                 `json:"incorrectAnswersCount"`
+	QuestionReviews       []QuestionReview    `json:"questionReviews"`
+	AIFeedback            *AIFeedbackResponse `json:"aiFeedback,omitempty"`
+	RecommendedCourses    []RecommendedCourse `json:"recommendedCourses,omitempty"`
 }
 
 type QuestionReview struct {
@@ -47,4 +49,16 @@ type QuestionReview struct {
 	IsCorrect      bool     `json:"isCorrect"`
 	Explanation    string   `json:"explanation,omitempty"`
 	Order          int      `json:"order"`
+}
+
+type AIFeedbackResponse struct {
+	Signal          string `json:"signal"`
+	FeedbackMessage string `json:"feedbackMessage"`
+}
+
+type RecommendedCourse struct {
+	ID          int    `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	PicURL      string `json:"picUrl"`
 }
