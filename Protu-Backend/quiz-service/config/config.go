@@ -16,6 +16,12 @@ type Config struct {
 	// AI Service connection
 	AIBaseURL string `mapstructure:"AI_BASE_URL"`
 
+	// Content Database (PostgreSQL) configuration
+	ContentDBURL      string `mapstructure:"CONTENT_DB_URL"`
+	ContentDBUsername string `mapstructure:"CONTENT_DB_USERNAME"`
+	ContentDBPassword string `mapstructure:"CONTENT_DB_PASSWORD"`
+	ContentDBName     string `mapstructure:"CONTENT_DB_NAME"`
+
 	// Authentication configuration
 	JWTSecret string `mapstructure:"JWT_SECRET"`
 

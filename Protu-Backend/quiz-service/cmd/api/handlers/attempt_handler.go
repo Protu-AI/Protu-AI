@@ -1,12 +1,16 @@
 package handlers
 
 import (
+	"fmt"
+	"log"
+
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"protu.ai/quiz-service/internal/dto/request"
 	"protu.ai/quiz-service/internal/dto/response"
 	"protu.ai/quiz-service/internal/middleware"
 	"protu.ai/quiz-service/internal/models"
+	"protu.ai/quiz-service/internal/repository"
 	"protu.ai/quiz-service/internal/service"
 	"protu.ai/quiz-service/pkg/errors"
 	apiResponse "protu.ai/quiz-service/pkg/response"
@@ -14,16 +18,18 @@ import (
 )
 
 type AttemptHandler struct {
-	attemptService *service.AttemptService
-	quizService    *service.QuizService
-	aiService      *service.AIService
+	attemptService   *service.AttemptService
+	quizService      *service.QuizService
+	aiService        *service.AIService
+	courseRepository *repository.CourseRepository
 }
 
-func NewAttemptHandler(attemptService *service.AttemptService, quizService *service.QuizService, aiService *service.AIService) *AttemptHandler {
+func NewAttemptHandler(attemptService *service.AttemptService, quizService *service.QuizService, aiService *service.AIService, courseRepository *repository.CourseRepository) *AttemptHandler {
 	return &AttemptHandler{
-		attemptService: attemptService,
-		quizService:    quizService,
-		aiService:      aiService,
+		attemptService:   attemptService,
+		quizService:      quizService,
+		aiService:        aiService,
+		courseRepository: courseRepository,
 	}
 }
 
@@ -207,15 +213,37 @@ func (h *AttemptHandler) SubmitAttempt(c *gin.Context) {
 		return
 	}
 
+	log.Printf("[SubmitAttempt] Starting AI feedback request for attempt %s", attemptID)
+	aiFeedback, err := h.aiService.GetEnhancedQuizFeedback(c, quiz, submittedAttempt.Answers)
+
+	aiExplanationsMap := make(map[int]string)
+	if err == nil && aiFeedback != nil {
+		for _, explanation := range aiFeedback.DetailedExplanations {
+			aiExplanationsMap[explanation.QuestionID] = explanation.Explanation
+		}
+		log.Printf("[SubmitAttempt] Successfully received AI feedback with %d explanations and %d course recommendations",
+			len(aiFeedback.DetailedExplanations), len(aiFeedback.RecommendedCourseIDs))
+	} else {
+		log.Printf("[SubmitAttempt] Failed to get AI feedback: %v", err)
+	}
+
 	questionReviews := make([]response.QuestionReview, len(submittedAttempt.Answers))
 	for i, ans := range submittedAttempt.Answers {
 		var questionType string
 		var options []string
+		var explanation string
+
 		if q, ok := questionMap[ans.QuestionID.Hex()]; ok {
 			questionType = q.QuestionType
 			options = make([]string, len(q.Options))
 			for j, opt := range q.Options {
 				options[j] = opt.Text
+			}
+
+			if !ans.IsCorrect {
+				if aiExplanation, exists := aiExplanationsMap[q.Order]; exists {
+					explanation = aiExplanation
+				}
 			}
 		}
 
@@ -227,7 +255,7 @@ func (h *AttemptHandler) SubmitAttempt(c *gin.Context) {
 			SelectedAnswer: ans.SelectedAnswer,
 			CorrectAnswer:  ans.CorrectAnswer,
 			IsCorrect:      ans.IsCorrect,
-			Explanation:    ans.Explanation,
+			Explanation:    explanation,
 			Order:          ans.Order,
 		}
 	}
@@ -244,6 +272,45 @@ func (h *AttemptHandler) SubmitAttempt(c *gin.Context) {
 		CorrectAnswersCount:   correctAnswers,
 		IncorrectAnswersCount: incorrectAnswers,
 		QuestionReviews:       questionReviews,
+	}
+
+	if err != nil {
+		reviewResponse.AIFeedback = &response.AIFeedbackResponse{
+			Signal:          "error",
+			FeedbackMessage: fmt.Sprintf("AI feedback unavailable: %v", err),
+		}
+		reviewResponse.RecommendedCourses = []response.RecommendedCourse{}
+	} else {
+		aiResponse := &response.AIFeedbackResponse{
+			Signal:          aiFeedback.Signal,
+			FeedbackMessage: aiFeedback.FeedbackMessage,
+		}
+
+		reviewResponse.AIFeedback = aiResponse
+
+		if len(aiFeedback.RecommendedCourseIDs) > 0 {
+			log.Printf("[SubmitAttempt] Fetching course information for IDs: %v", aiFeedback.RecommendedCourseIDs)
+			courses, err := h.courseRepository.GetCoursesByIDs(aiFeedback.RecommendedCourseIDs)
+			if err != nil {
+				log.Printf("[SubmitAttempt] Failed to fetch course information: %v", err)
+				reviewResponse.RecommendedCourses = []response.RecommendedCourse{}
+			} else {
+				log.Printf("[SubmitAttempt] Successfully fetched %d courses", len(courses))
+				recommendedCourses := make([]response.RecommendedCourse, len(courses))
+				for i, course := range courses {
+					recommendedCourses[i] = response.RecommendedCourse{
+						ID:          course.ID,
+						Name:        course.Name,
+						Description: course.Description,
+						PicURL:      course.PicURL,
+					}
+				}
+				reviewResponse.RecommendedCourses = recommendedCourses
+			}
+		} else {
+			log.Printf("[SubmitAttempt] No course recommendations received from AI")
+			reviewResponse.RecommendedCourses = []response.RecommendedCourse{}
+		}
 	}
 
 	apiResponse.AttemptSubmitted(c, reviewResponse)

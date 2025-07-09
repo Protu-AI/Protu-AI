@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"strings"
@@ -70,21 +71,31 @@ type AIGeneratedQuestion struct {
 
 // QuizFeedbackRequest represents a single question for AI feedback
 type QuizQuestionFeedback struct {
-	Question      string   `json:"question"`
-	Options       []string `json:"options"`
-	CorrectAnswer string   `json:"correct_answer"`
-	UserAnswer    string   `json:"user_answer"`
+	QuestionID        string   `json:"question_id"`
+	UserAnswer        string   `json:"user_answer"`
+	Question          string   `json:"question"`
+	Options           []string `json:"options"`
+	CorrectAnswerText string   `json:"correct_answer_text"`
 }
 
 // QuizFeedbackRequest is the request body for getting AI feedback
 type QuizFeedbackRequest struct {
 	Quiz []QuizQuestionFeedback `json:"quiz"`
+	K    int                    `json:"k"`
+}
+
+// DetailedExplanation represents explanation for a specific question
+type DetailedExplanation struct {
+	QuestionID  int    `json:"question_id"`
+	Explanation string `json:"explanation"`
 }
 
 // QuizFeedbackResponse is the AI's response to a feedback request
 type QuizFeedbackResponse struct {
-	Signal   string `json:"signal"`
-	Feedback string `json:"feedback"`
+	Signal               string                `json:"signal"`
+	FeedbackMessage      string                `json:"feedback_message"`
+	DetailedExplanations []DetailedExplanation `json:"detailed_explanations"`
+	RecommendedCourseIDs []int                 `json:"recommended_course_ids"`
 }
 
 // QuizGenerationResult holds the complete result from AI quiz generation
@@ -347,6 +358,7 @@ func (s *AIService) GetQuizFeedback(ctx context.Context, quiz *models.Quiz, user
 	// Create the quiz feedback request
 	feedbackRequest := QuizFeedbackRequest{
 		Quiz: make([]QuizQuestionFeedback, 0, len(userAnswers)),
+		K:    3,
 	}
 
 	// Map of question IDs to questions for faster lookup
@@ -398,10 +410,11 @@ func (s *AIService) GetQuizFeedback(ctx context.Context, quiz *models.Quiz, user
 		}
 
 		feedbackRequest.Quiz = append(feedbackRequest.Quiz, QuizQuestionFeedback{
-			Question:      question.QuestionText,
-			Options:       options,
-			CorrectAnswer: correctOptionText,
-			UserAnswer:    selectedOptionText,
+			QuestionID:        answer.QuestionID.Hex(),
+			UserAnswer:        selectedOptionText,
+			Question:          question.QuestionText,
+			Options:           options,
+			CorrectAnswerText: correctOptionText,
 		})
 	}
 
@@ -447,5 +460,119 @@ func (s *AIService) GetQuizFeedback(ctx context.Context, quiz *models.Quiz, user
 	}
 
 	log.Printf("[AIService] Successfully received quiz feedback")
-	return aiResp.Feedback, nil
+	return aiResp.FeedbackMessage, nil
+}
+
+func (s *AIService) GetEnhancedQuizFeedback(ctx context.Context, quiz *models.Quiz, userAnswers []models.Answer) (*QuizFeedbackResponse, error) {
+	feedbackRequest := QuizFeedbackRequest{
+		Quiz: make([]QuizQuestionFeedback, 0, len(userAnswers)),
+		K:    3,
+	}
+
+	questionMap := make(map[string]models.Question)
+	for _, q := range quiz.Questions {
+		questionMap[q.ID.Hex()] = q
+	}
+
+	for _, answer := range userAnswers {
+		question, exists := questionMap[answer.QuestionID.Hex()]
+		if !exists {
+			continue
+		}
+
+		var selectedOptionText string
+		var correctOptionText string
+
+		switch selected := answer.Selected.(type) {
+		case int:
+			if selected >= 0 && selected < len(question.Options) {
+				selectedOptionText = question.Options[selected].Text
+			}
+		case float64:
+			selectedIndex := int(selected)
+			if selectedIndex >= 0 && selectedIndex < len(question.Options) {
+				selectedOptionText = question.Options[selectedIndex].Text
+			}
+		case string:
+			selectedOptionText = selected
+		}
+
+		for _, opt := range question.Options {
+			if opt.IsCorrect {
+				correctOptionText = opt.Text
+				break
+			}
+		}
+
+		options := make([]string, 0, len(question.Options))
+		for _, opt := range question.Options {
+			options = append(options, opt.Text)
+		}
+
+		questionIDStr := fmt.Sprintf("%d", question.Order)
+
+		feedbackRequest.Quiz = append(feedbackRequest.Quiz, QuizQuestionFeedback{
+			QuestionID:        questionIDStr,
+			UserAnswer:        selectedOptionText,
+			Question:          question.QuestionText,
+			Options:           options,
+			CorrectAnswerText: correctOptionText,
+		})
+	}
+
+	if len(feedbackRequest.Quiz) == 0 {
+		return nil, fmt.Errorf("no valid answers to provide feedback on")
+	}
+
+	jsonBody, err := json.Marshal(feedbackRequest)
+	if err != nil {
+		log.Printf("[AIService] Failed to marshal quiz feedback request: %v", err)
+		return nil, err
+	}
+
+	log.Printf("[AIService] Sending enhanced quiz feedback request to AI endpoint %s with %d questions",
+		s.feedbackEndpoint, len(feedbackRequest.Quiz))
+	log.Printf("[AIService] AI Feedback request body: %s", string(jsonBody))
+
+	req, err := http.NewRequestWithContext(ctx, "POST", s.feedbackEndpoint, bytes.NewBuffer(jsonBody))
+	if err != nil {
+		log.Printf("[AIService] Failed to create HTTP request for quiz feedback: %v", err)
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		log.Printf("[AIService] Quiz feedback HTTP request failed: %v", err)
+		return nil, ErrAIServiceUnavailable
+	}
+	defer resp.Body.Close()
+
+	log.Printf("[AIService] Received enhanced quiz feedback response with status code: %d", resp.StatusCode)
+
+	if resp.StatusCode != http.StatusOK {
+		errorBody, _ := io.ReadAll(resp.Body)
+		log.Printf("[AIService] Non-OK status code for quiz feedback: %d", resp.StatusCode)
+		log.Printf("[AIService] Error response body: %s", string(errorBody))
+		return nil, fmt.Errorf("AI service returned status code %d: %s", resp.StatusCode, string(errorBody))
+	}
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("[AIService] Failed to read response body: %v", err)
+		return nil, err
+	}
+	log.Printf("[AIService] AI Feedback response body: %s", string(bodyBytes))
+
+	var aiResp QuizFeedbackResponse
+	if err := json.Unmarshal(bodyBytes, &aiResp); err != nil {
+		log.Printf("[AIService] Failed to decode quiz feedback response: %v", err)
+		return nil, err
+	}
+
+	log.Printf("[AIService] Successfully received enhanced quiz feedback with %d course recommendations",
+		len(aiResp.RecommendedCourseIDs))
+	log.Printf("[AIService] Feedback signal: %s, message: %s", aiResp.Signal, aiResp.FeedbackMessage)
+
+	return &aiResp, nil
 }
