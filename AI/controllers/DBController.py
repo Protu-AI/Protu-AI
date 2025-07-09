@@ -8,6 +8,11 @@ class DBController(BaseController):
 
     def __init__(self, db_name, db_user, db_password, db_host, db_port):
         super().__init__()
+        self.db_name = db_name
+        self.db_user = db_user
+        self.db_password = db_password
+        self.db_host = db_host
+        self.db_port = db_port
         self.db_connection = self.db_connect()
         self.db_cursor = self.db_connection.cursor()
         self.queries_dir = os.path.join(
@@ -15,11 +20,6 @@ class DBController(BaseController):
             "controllers/utils/queries.json"
         )
 
-        self.db_name = db_name
-        self.db_user = db_user
-        self.db_password = db_password
-        self.db_host = db_host
-        self.db_port = db_port
 
     def db_connect(self):
         try:
