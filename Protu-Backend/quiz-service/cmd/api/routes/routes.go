@@ -44,6 +44,7 @@ func SetupRoutes(
 		attempts := v1.Group("/attempts")
 		{
 			attempts.GET("/preview/:quizId", attemptHandler.PreviewQuiz)
+			attempts.GET("/attempted-preview/:quizId", attemptHandler.AttemptedQuizPreview)
 			attempts.POST("/start/:quizId", attemptHandler.StartQuiz)
 			attempts.PUT("/:id/submit", attemptHandler.SubmitAttempt)
 		}

@@ -15,6 +15,7 @@ type Course struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	PicURL      string `json:"pic_url"`
+	LessonCount int    `json:"lesson_count"`
 }
 
 type CourseRepository struct {
@@ -60,10 +61,12 @@ func (r *CourseRepository) GetCoursesByIDs(courseIDs []int) ([]Course, error) {
 	}
 
 	query := fmt.Sprintf(`
-		SELECT id, name, description, pic_url 
-		FROM courses 
-		WHERE id IN (%s)
-		ORDER BY id`, strings.Join(placeholders, ","))
+		SELECT c.id, c.name, c.description, c.pic_url, COALESCE(COUNT(cl.lesson_id), 0) as lesson_count
+		FROM courses c
+		LEFT JOIN courses_lessons cl ON c.id = cl.course_id
+		WHERE c.id IN (%s)
+		GROUP BY c.id, c.name, c.description, c.pic_url
+		ORDER BY c.id`, strings.Join(placeholders, ","))
 
 	log.Printf("[CourseRepository] Executing query: %s with args: %v", query, args)
 
@@ -79,7 +82,7 @@ func (r *CourseRepository) GetCoursesByIDs(courseIDs []int) ([]Course, error) {
 		var description sql.NullString
 		var picURL sql.NullString
 
-		err := rows.Scan(&course.ID, &course.Name, &description, &picURL)
+		err := rows.Scan(&course.ID, &course.Name, &description, &picURL, &course.LessonCount)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan row: %w", err)
 		}
