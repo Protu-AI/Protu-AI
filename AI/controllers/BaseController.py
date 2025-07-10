@@ -13,6 +13,7 @@ class BaseController:
             self.base_dir,
             'assets/database'
         )
+        os.environ["GROQ_API_KEY"] = self.app_settings.GROQ_API_KEY
         os.environ["GEMINI_API_KEY"] = self.app_settings.GOOGLE_API_KEY
         os.environ['AGENTOPS_API_KEY'] = self.app_settings.AGENTOPS_API_KEY
 

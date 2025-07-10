@@ -1,5 +1,6 @@
 {
   "get_last_message_id": "SELECT \"id\", \"content\" FROM \"messages\" WHERE \"chat_id\" = %s AND \"sender_role\" = 'user' ORDER BY \"created_at\" DESC LIMIT 1;",
   "get_attached_file": "SELECT \"file_path\", \"file_type\" FROM \"attachments\" WHERE \"message_id\" = %s;",
-  "get_all_messages": "SELECT \"sender_role\", \"content\" FROM \"messages\" WHERE \"chat_id\" = %s ORDER BY \"created_at\" ASC;"
+  "get_all_messages": "SELECT \"sender_role\", \"content\" FROM \"messages\" WHERE \"chat_id\" = %s ORDER BY \"created_at\" ASC;",
+  "get_courses": "SELECT id, name, description FROM courses"
 }

@@ -39,7 +39,17 @@ func main() {
 
 	quizRepo := repository.NewQuizRepository(database)
 	attemptRepo := repository.NewAttemptRepository(database)
+	attemptResultRepo := repository.NewAttemptResultRepository(database)
 	userRepo := repository.NewUserRepository(database)
+
+	courseRepo, err := repository.NewCourseRepository(&cfg)
+	if err != nil {
+		log.Printf("WARNING: Failed to initialize course repository: %v", err)
+		log.Printf("Course recommendations will not be available")
+		courseRepo = nil
+	} else {
+		defer courseRepo.Close()
+	}
 
 	quizService := service.NewQuizService(quizRepo)
 	attemptService := service.NewAttemptService(attemptRepo, quizRepo)
@@ -66,7 +76,7 @@ func main() {
 
 	quizService.SetAttemptRepo(attemptRepo)
 	quizHandler := handlers.NewQuizHandler(quizService, aiService)
-	attemptHandler := handlers.NewAttemptHandler(attemptService, quizService, aiService)
+	attemptHandler := handlers.NewAttemptHandler(attemptService, quizService, aiService, courseRepo, attemptResultRepo)
 	dashboardHandler := handlers.NewDashboardHandler(dashboardService)
 
 	router := gin.New()
