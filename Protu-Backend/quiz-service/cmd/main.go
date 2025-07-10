@@ -39,6 +39,7 @@ func main() {
 
 	quizRepo := repository.NewQuizRepository(database)
 	attemptRepo := repository.NewAttemptRepository(database)
+	attemptResultRepo := repository.NewAttemptResultRepository(database)
 	userRepo := repository.NewUserRepository(database)
 
 	courseRepo, err := repository.NewCourseRepository(&cfg)
@@ -75,7 +76,7 @@ func main() {
 
 	quizService.SetAttemptRepo(attemptRepo)
 	quizHandler := handlers.NewQuizHandler(quizService, aiService)
-	attemptHandler := handlers.NewAttemptHandler(attemptService, quizService, aiService, courseRepo)
+	attemptHandler := handlers.NewAttemptHandler(attemptService, quizService, aiService, courseRepo, attemptResultRepo)
 	dashboardHandler := handlers.NewDashboardHandler(dashboardService)
 
 	router := gin.New()

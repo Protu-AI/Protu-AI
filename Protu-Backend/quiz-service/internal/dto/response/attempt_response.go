@@ -61,4 +61,30 @@ type RecommendedCourse struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	PicURL      string `json:"picUrl"`
+	LessonCount int    `json:"lessonCount"`
+}
+
+type AttemptedQuizPreviewResponse struct {
+	ID                string                   `json:"id"`
+	Title             string                   `json:"title"`
+	Topic             string                   `json:"topic"`
+	DifficultyLevel   string                   `json:"difficultyLevel"`
+	NumberOfQuestions int                      `json:"numberOfQuestions"`
+	TimeLimit         int                      `json:"timeLimit"`
+	CreatedAt         time.Time                `json:"createdAt"`
+	HasBeenAttempted  bool                     `json:"hasBeenAttempted"`
+	BestAttempt       *AttemptedQuizBestResult `json:"bestAttempt,omitempty"`
+}
+
+type AttemptedQuizBestResult struct {
+	AttemptID             string              `json:"attemptId"`
+	Score                 float64             `json:"score"`
+	Passed                bool                `json:"passed"`
+	TimeTaken             int                 `json:"timeTaken"`
+	CompletedAt           time.Time           `json:"completedAt"`
+	CorrectAnswersCount   int                 `json:"correctAnswersCount"`
+	IncorrectAnswersCount int                 `json:"incorrectAnswersCount"`
+	QuestionReviews       []QuestionReview    `json:"questionReviews"`
+	AIFeedback            *AIFeedbackResponse `json:"aiFeedback,omitempty"`
+	RecommendedCourses    []RecommendedCourse `json:"recommendedCourses,omitempty"`
 }
