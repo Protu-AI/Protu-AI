@@ -19,6 +19,8 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
+import static org.protu.contentservice.progress.ProgressRepository.CACHE_LESSONS_COUNT_IN_COURSE;
+
 @Service
 public class CourseService {
 
@@ -116,6 +118,7 @@ public class CourseService {
       @CacheEvict(value = CACHE_ALL_COURSES_LIST, allEntries = true),
       @CacheEvict(value = CACHE_COURSE_DETAILS, key = "#courseName"),
       @CacheEvict(value = CACHE_COURSE_LESSONS, key = "#courseName"),
+      @CacheEvict(value = CACHE_LESSONS_COUNT_IN_COURSE, key = "#courseName")
   })
   public void addExistingLessonToCourse(String courseName, String lessonName) {
     CourseDto course = courses.findByNameOrThrow(courseName);
