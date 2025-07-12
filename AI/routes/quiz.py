@@ -87,23 +87,65 @@ async def create_quiz_feedback(request: Request, quiz_feedback_request: Feedback
         nlp_controller=nlp_controller
     )
 
-    # retrieve_content = nlp_controller.search_vector_db_collection(
-    #     chat_id='courses',
-    #     text="evaluation metrics for imbalanced classification",
-    #     limit=3
+    # topics = [
+    #     "precision",
+    #     "machine learning",
+    #     "artificial intelligence",
+    #     "neural networks",
+    #     "activation function",
+    #     "neural network architecture",
+    #     "python library",
+    #     "clustering",
+    #     "supervised learning",
+    #     "overfitting",
+    #     "feature engineering",
+    #     "deep learning",
+    #     "perceptron",
+    #     "backpropagation",
+    #     "reinforcement learning"
+    # ]
+    # all_results = []
+    # for t in topics:
+    #     raw_documents = nlp_controller.search_vector_db_collection(
+    #         text=t,
+    #         chat_id="courses",
+    #         limit=3
+    #     )
+    #     if raw_documents is None:
+    #         print(f"WARNING: No results found for topic: {t}")
+    #         continue
+
+    #     all_results.extend(raw_documents)
+
+    # print(all_results)
+    # highest_scores = {}
+    # for doc in all_results:
+    #     try:
+    #         course_id = int(doc.metadata)
+    #         score = doc.score
+
+    #         if course_id not in highest_scores or score > highest_scores[course_id]:
+    #             highest_scores[course_id] = score
+
+    #     except (ValueError, TypeError):
+    #         # Skip documents with malformed metadata
+    #         print(
+    #             f"WARNING: Skipping document with invalid metadata: {doc.metadata}")
+    #         continue
+
+    # processed_results = [
+    #     {"course_id": course_id, "relevance_score": score}
+    #     for course_id, score in highest_scores.items()
+    # ]
+    # print(processed_results)
+
+    # sorted_results = sorted(
+    #     processed_results,
+    #     key=lambda item: item['relevance_score'],
+    #     reverse=True
     # )
 
-    # print(retrieve_content)
-
-    # processed_results = []
-    # for doc in retrieve_content:
-    #     course_id = int(doc.metadata)
-    #     processed_results.append({
-    #         "course_id": course_id,
-    #         "relevance_score": doc.score
-    #     })
-
-    # print(processed_results)
+    # print(sorted_results)
 
     crew_created = agents_controller.create_quiz_feedback_recommendation_crew(
         tools=[courses_retriever_tool]
@@ -124,10 +166,6 @@ async def create_quiz_feedback(request: Request, quiz_feedback_request: Feedback
 
     feedback_message, detailed_explanations, recommended_course_ids = feedback_response[
         'feedback_message'], feedback_response['detailed_explanations'], feedback_response['recommended_course_ids']
-    
-    # feedback_response = nlp_controller.get_quiz_feedback(
-    #     inputs=quiz_feedback_request
-    # )
 
     if feedback_response is None:
         logger.error("Error in creating quiz feedback")

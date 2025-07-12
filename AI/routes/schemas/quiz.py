@@ -15,4 +15,4 @@ class QuizAgentInput(BaseModel):
     additional_tags: List[str] = Field(
         default=[], description="List of additional tags for the quiz from the user")
     additional_preferences: str = Field(
-        description="Additional preferences for the quiz generation")
+        default="", description="Additional preferences for the quiz generation")

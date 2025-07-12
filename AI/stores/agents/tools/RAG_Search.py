@@ -21,36 +21,55 @@ def retrieve_courses_tool(nlp_controller: NLPController) -> Tool:
         A crewAI Tool object ready to be passed to an agent.
     """
 
-    def run_and_process_search(topic: str) -> List[Dict[str, Any]]:
+    def run_and_process_search(topics: List[str]) -> List[Dict[str, Any]]:
 
-        raw_documents = nlp_controller.search_vector_db_collection(
-            text=topic,
-            chat_id="courses",
-            limit=3
-        )
+        all_results = []
+        for t in topics:
+            raw_documents = nlp_controller.search_vector_db_collection(
+                text=t,
+                chat_id="courses",
+                limit=3
+            )
+            if raw_documents is None:
+                print(f"WARNING: No results found for topic: {t}")
+                continue
 
-        processed_results = []
-        for doc in raw_documents:
+            all_results.extend(raw_documents)
+
+        highest_scores = {}
+        for doc in all_results:
             try:
                 course_id = int(doc.metadata)
-                processed_results.append({
-                    "course_id": course_id,
-                    "relevance_score": doc.score
-                })
+                score = doc.score
+
+                if course_id not in highest_scores or score > highest_scores[course_id]:
+                    highest_scores[course_id] = score
+
             except (ValueError, TypeError):
                 # Skip documents with malformed metadata
                 print(
                     f"WARNING: Skipping document with invalid metadata: {doc.metadata}")
                 continue
 
-        return processed_results
+        processed_results = [
+            {"course_id": course_id, "relevance_score": score}
+            for course_id, score in highest_scores.items()
+        ]
+
+        sorted_results = sorted(
+            processed_results,
+            key=lambda item: item['relevance_score'],
+            reverse=True
+        )
+
+        return sorted_results
 
     return Tool(
         name="Course Recommender",
         description=(
-            "Use this tool to find relevant course recommendations for a SINGLE, specific topic. "
-            "You should call this tool for each individual topic you identify as a user's weakness. "
-            "It searches the platform's database and returns a list of courses that can help a user learn about that topic."
+            "Use this tool to find relevant course recommendations for one or more topics. "
+            "Pass a list of all identified topics to perform a single, efficient search "
+            "and get a consolidated list of relevant courses."
         ),
         func=run_and_process_search,
         args_schema=CourseSearchInput,
