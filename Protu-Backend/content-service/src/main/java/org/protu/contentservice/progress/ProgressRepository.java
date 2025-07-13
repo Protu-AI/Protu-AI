@@ -2,6 +2,7 @@ package org.protu.contentservice.progress;
 
 import org.protu.contentservice.common.exception.custom.CourseHasNoLessonsException;
 import org.protu.contentservice.common.exception.custom.UserNotEnrolledInCourseException;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
@@ -10,12 +11,14 @@ import java.util.Optional;
 @Repository
 public class ProgressRepository {
 
+  public static final String CACHE_LESSONS_COUNT_IN_COURSE = "total-lessons-in-course";
   private final JdbcClient jdbcClient;
 
   public ProgressRepository(JdbcClient jdbcClient) {
     this.jdbcClient = jdbcClient;
   }
 
+  @Cacheable(value = CACHE_LESSONS_COUNT_IN_COURSE, key = "#courseId", unless = "#result == null")
   public int getNumberOfLessonsInCourse(Integer courseId) {
     Optional<Integer> countOpt = jdbcClient.sql("""
             SELECT COUNT(*)
@@ -85,8 +88,8 @@ public class ProgressRepository {
         .update();
   }
 
-  public boolean markLessonCompleted(Long userId, Integer lessonId) {
-    int count = jdbcClient.sql("""
+  public int markLessonCompleted(Long userId, Integer lessonId) {
+    return jdbcClient.sql("""
             INSERT INTO users_lessons (user_id, lesson_id, is_completed)
             VALUES (:userId, :lessonId, :isCompleted)
             ON CONFLICT (user_id, lesson_id) DO
@@ -97,8 +100,6 @@ public class ProgressRepository {
         .param("lessonId", lessonId)
         .param("isCompleted", true)
         .update();
-
-    return count >= 1;
   }
 
   public boolean markLessonUncompleted(Long userId, Integer lessonId) {

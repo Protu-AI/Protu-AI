@@ -1,6 +1,5 @@
 package org.protu.contentservice.progress;
 
-import org.protu.contentservice.common.exception.custom.LessonAlreadyCompletedException;
 import org.protu.contentservice.common.exception.custom.LessonAlreadyNotCompletedException;
 import org.protu.contentservice.course.CourseDto;
 import org.protu.contentservice.course.CourseService;
@@ -48,31 +47,27 @@ public class ProgressService {
     progressRepo.removeCourseForUser(userId, course.id());
   }
 
-  private boolean markLessonCompleted(Long userId, String lessonName) {
-    LessonWithoutContent lesson = lessonService.findByNameWithoutContent(lessonName);
-    return progressRepo.markLessonCompleted(userId, lesson.id());
-  }
 
   private boolean markLessonNotCompleted(Long userId, String lessonName) {
     LessonWithoutContent lesson = lessonService.findByNameWithoutContent(lessonName);
     return progressRepo.markLessonUncompleted(userId, lesson.id());
   }
 
-  @Transactional
   public void incrementCompletedLessonsByUser(Long userId, String courseName, String lessonName) {
     userReplicaService.getUserById(userId);
     CourseDto course = courseService.getCourseByNameOrThrow(courseName);
+    LessonWithoutContent lesson = lessonService.findByNameWithoutContent(lessonName);
+    
+    updateUserProgress(userId, lesson.id(), course.id());
+  }
 
-    if (!markLessonCompleted(userId, lessonName)) {
-      throw new LessonAlreadyCompletedException();
+  @Transactional
+  public void updateUserProgress(Long userId, Integer lessonId, Integer courseId) {
+    if (progressRepo.markLessonCompleted(userId, lessonId) == 0) {
+      return;
     }
 
-    int lessonsCount = progressRepo.getNumberOfLessonsInCourse(course.id());
-    int completedLessonsCount = progressRepo.getTotalNumberOfCompletedLessonsInCourse(userId, course.id());
-
-    if (completedLessonsCount < lessonsCount) {
-      progressRepo.incrementCompletedLessonByUser(userId, course.id());
-    }
+    progressRepo.incrementCompletedLessonByUser(userId, courseId);
   }
 
   @Transactional

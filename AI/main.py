@@ -58,7 +58,6 @@ async def startup_spam():
 
 async def shutdown_spam():
 
-    app.db_controller.db_disconnect()
     app.vectordb_client.disconnect()
     # agentops.end_session()
 

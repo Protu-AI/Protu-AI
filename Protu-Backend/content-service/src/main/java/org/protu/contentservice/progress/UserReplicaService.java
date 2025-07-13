@@ -15,13 +15,13 @@ public class UserReplicaService {
     this.jdbcClient = jdbcClient;
   }
 
-  public User getUserById(Long userId) {
+  public void getUserById(Long userId) {
     Optional<User> userOpt = jdbcClient.sql("SELECT id, public_id AS publicId, roles FROM users WHERE id = :id")
         .param("id", userId)
         .query(User.class)
         .optional();
 
-    return userOpt.orElseThrow(UserNotFoundException::new);
+    userOpt.orElseThrow(UserNotFoundException::new);
   }
 
   public void addUser(UserData userData) {
