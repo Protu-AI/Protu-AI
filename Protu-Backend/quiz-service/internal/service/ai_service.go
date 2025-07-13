@@ -80,7 +80,7 @@ type QuizQuestionFeedback struct {
 
 // QuizFeedbackRequest is the request body for getting AI feedback
 type QuizFeedbackRequest struct {
-	Quiz []QuizQuestionFeedback `json:"quiz"`
+	Quiz []QuizQuestionFeedback `json:"incorrect_questions"`
 	K    int                    `json:"k"`
 }
 
