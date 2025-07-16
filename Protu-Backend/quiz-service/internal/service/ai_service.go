@@ -116,7 +116,7 @@ func NewAIService(config *config.Config) *AIService {
 	return &AIService{
 		config: config,
 		client: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout: 600 * time.Second,
 		},
 		subtopicsGenEndpoint: fmt.Sprintf("%s/protu/ai/data/quiz-tags", config.AIBaseURL),
 		quizGenEndpoint:      fmt.Sprintf("%s/protu/ai/data/quiz-generation", config.AIBaseURL),
@@ -475,6 +475,10 @@ func (s *AIService) GetEnhancedQuizFeedback(ctx context.Context, quiz *models.Qu
 	}
 
 	for _, answer := range userAnswers {
+		if answer.IsCorrect {
+			continue
+		}
+
 		question, exists := questionMap[answer.QuestionID.Hex()]
 		if !exists {
 			continue
@@ -521,7 +525,13 @@ func (s *AIService) GetEnhancedQuizFeedback(ctx context.Context, quiz *models.Qu
 	}
 
 	if len(feedbackRequest.Quiz) == 0 {
-		return nil, fmt.Errorf("no valid answers to provide feedback on")
+		log.Printf("[AIService] No incorrect answers found, skipping AI feedback request")
+		return &QuizFeedbackResponse{
+			Signal:               "Agent response successful",
+			FeedbackMessage:      "Excellent work! You answered all questions correctly.",
+			DetailedExplanations: []DetailedExplanation{},
+			RecommendedCourseIDs: []int{},
+		}, nil
 	}
 
 	jsonBody, err := json.Marshal(feedbackRequest)
@@ -530,7 +540,7 @@ func (s *AIService) GetEnhancedQuizFeedback(ctx context.Context, quiz *models.Qu
 		return nil, err
 	}
 
-	log.Printf("[AIService] Sending enhanced quiz feedback request to AI endpoint %s with %d questions",
+	log.Printf("[AIService] Sending enhanced quiz feedback request to AI endpoint %s with %d incorrect questions",
 		s.feedbackEndpoint, len(feedbackRequest.Quiz))
 	log.Printf("[AIService] AI Feedback request body: %s", string(jsonBody))
 

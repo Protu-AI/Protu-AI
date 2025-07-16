@@ -83,7 +83,6 @@ func main() {
 
 	router.Use(gin.Logger())
 	router.Use(middleware.ErrorHandler())
-	router.Use(middleware.ValidationMiddleware())
 
 	routes.SetupRoutes(router, &cfg, quizHandler, attemptHandler, dashboardHandler)
 
