@@ -121,7 +121,8 @@ func (s *DashboardService) GetDashboardSummary(ctx context.Context, userID strin
 		successRate = float64(passedCount) / float64(totalQuizzes) * 100
 	}
 
-	draftStatuses := []string{models.QuizStatusDraftStage1, models.QuizStatusDraft}
+	// Only count fully generated drafts (stage 2 completed), exclude stage 1 drafts (empty quizzes)
+	draftStatuses := []string{models.QuizStatusDraft}
 	draftQuizzes, _, err := s.quizRepo.GetQuizzesByUserIDAndStatusesPaginated(ctx, userID, draftStatuses, 1, 1000, "", "", "")
 	if err != nil {
 		return nil, err
@@ -358,7 +359,7 @@ func (s *DashboardService) GetFailedQuizzes(ctx context.Context, userID string, 
 func (s *DashboardService) GetDraftQuizzes(ctx context.Context, userID string, options FilterOptions) (*QuizList, error) {
 	normalizePaginationOptions(&options)
 
-	draftStatuses := []string{models.QuizStatusDraftStage1, models.QuizStatusDraft}
+	draftStatuses := []string{models.QuizStatusDraft}
 
 	quizzes, totalCount, err := s.quizRepo.GetQuizzesByUserIDAndStatusesPaginated(
 		ctx, userID, draftStatuses, options.Page, options.PageSize, options.Topic, options.SortBy, options.SortOrder,
