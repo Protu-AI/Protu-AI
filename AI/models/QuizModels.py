@@ -27,22 +27,8 @@ class TagsFilterOutput(BaseModel):
     )
 
 
-class QuizGenerationInput(BaseModel):
-    prompt: str = Field(...,
-                        description="The prompt describing the quiz content")
-    difficulty: str = Field(
-        ..., description="Difficulty level of the quiz (e.g., Beginner, Intermediate, Advanced)")
-    number_of_questions: int = Field(
-        ..., description="Number of questions to generate for the quiz")
-    question_type: str = Field(
-        ..., description="Type of questions (e.g., Multiple Choice, True/False, Combination between both)")
-    time: int = Field(..., description="Time to solve the quiz in minutes")
-    final_tags: List[str] = Field(
-        min_length=6, description="Curated list of programming and software engineering-related tags from the Tag Filtering Agent"
-    )
-
-
 class QuizQuestion(BaseModel):
+
     question: str = Field(...,
                           description="The question to be asked in the quiz")
     options: List[str] = Field(
@@ -60,27 +46,35 @@ class QuizAgentResponse(BaseModel):
         ..., min_length=1, description="List of questions for the quiz based on the prompt and the tags")
 
 
-class QuizModelAnswer(QuizQuestion):
+class QuizModelAnswer(BaseModel):
     question_id: int = Field(...,
                              description="The unique identifier for the question.")
-    user_answer: str = Field(
-        ..., description="The answer to the question provided by the user")
+    question: str = Field(...,
+                          description="The question to be asked in the quiz")
+    options: List[str] = Field(..., min_length=2, max_length=4,
+                               description="List of options for the question")
+    correct_answer_text: str = Field(...,
+                                     description="The correct answer text to the question")
+    user_answer: str = Field(...,
+                             description="The answer to the question provided by the user")
 
 
 class FeedbackInput(BaseModel):
-    quiz: List[QuizModelAnswer] = Field(
-        ..., description="List of questions for the quiz based on the prompt and the tags")
+    incorrect_questions: List[QuizModelAnswer] = Field(
+        ...,
+        description="A list containing only the questions that the user answered incorrectly."
+    )
 
     k: int = Field(
         description="The maximum number of course recommendations to return in the final output.",
-        default=5
+        default=3
     )
 
 
 class CourseSearchInput(BaseModel):
-    topic: str = Field(
+    topics: List[str] = Field(
         ...,
-        description="A single, specific, and granular topic to search for courses on. For example: 'python_dictionaries', 'css_flexbox', or 'javascript_promises'."
+        description="A list of specific and granular topics to search for courses on. For example: ['python_dictionaries', 'css_flexbox', 'javascript_promises']."
     )
 
 
@@ -99,57 +93,27 @@ class RecommendedCourse(BaseModel):
     )
 
 
-class AnalyzedQuestion(BaseModel):
-    # This field is required to link explanations to questions
-    question_id: int = Field(
-        ...,
-        description="The unique identifier for the quiz question."
-    )
-    question: str = Field(
-        ...,
-        description="The full text of the quiz question."
-    )
-    user_answer: str = Field(
-        ...,
-        description="The answer the user provided."
-    )
-    correct_answer: str = Field(
-        ...,
-        description="The correct answer for the question."
-    )
-    topic: str = Field(
-        ...,
-        description="The specific, granular topic this question tests."
-    )
-    recommended_courses: List[RecommendedCourse] = Field(
-        ...,
-        description="A list of course recommendations relevant to this question's topic."
-    )
-
-
 class WeaknessAnalyzerOutput(BaseModel):
     """
-    The top-level model for the agent's final JSON output. This is the data
-    that will be passed to the next agent in the crew.
+    The top-level model for the Weakness Analyzer agent's output.
+    This will be the input for the Feedback Synthesizer agent.
     """
-    analyzed_questions: List[AnalyzedQuestion] = Field(
-        ...,
-        description="A list of all the questions the user answered incorrectly, enriched with analysis and recommendations."
-    )
+    incorrect_questions: List[QuizModelAnswer] = Field(
+        ..., description="A list of only the questions the user answered incorrectly.")
+    all_topics: List[str] = Field(
+        ..., description="A consolidated list of all topics derived from the incorrect questions.")
+    all_recommended_courses: List[RecommendedCourse] = Field(
+        ..., description="A consolidated list of all course recommendations for the identified topics.")
 
 
 class DetailedExplanation(BaseModel):
     """
     Represents a detailed explanation for a single incorrect answer.
     """
-    question_id: int = Field(
-        ...,
-        description="Identifier of the question being explained."
-    )
+    question_id: int = Field(...,
+                             description="Identifier of the question being explained.")
     explanation: str = Field(
-        ...,
-        description="The detailed explanation for the correct answer."
-    )
+        ..., description="The detailed explanation for why the user's answer was incorrect and the correct answer is right.")
 
 
 class FeedbackSynthesizerOutput(BaseModel):
@@ -158,14 +122,8 @@ class FeedbackSynthesizerOutput(BaseModel):
     This is the data your application will use to render the feedback UI.
     """
     feedback_message: str = Field(
-        ...,
-        description="A complete, user-facing motivational message including the list of weak point topics."
-    )
+        ..., description="A complete, user-facing motivational message including the list of weak point topics.")
     detailed_explanations: List[DetailedExplanation] = Field(
-        ...,
-        description="A list of detailed explanations for each question the user answered incorrectly."
-    )
+        ..., description="A list of detailed explanations for each question the user answered incorrectly.")
     recommended_course_ids: List[int] = Field(
-        ...,
-        description="The final, curated list of course IDs to recommend to the user."
-    )
+        ..., description="The final, curated list of the top 'k' course IDs to recommend to the user.")

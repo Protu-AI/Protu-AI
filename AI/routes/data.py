@@ -58,7 +58,15 @@ async def chat_title_generation(request: Request, chat_messages: ChatTitleGenera
 
     agents_controller = request.app.agents_controller
 
-    db_controller = request.app.db_controller
+    app_settings = BaseController().app_settings
+
+    db_controller = db_controller = DBController(
+        db_name=app_settings.DB_NAME,
+        db_user=app_settings.DB_USER,
+        db_password=app_settings.DB_PASSWORD,
+        db_host=app_settings.DB_HOST,
+        db_port=app_settings.DB_PORT
+    )
 
     all_messages_as_tuples = db_controller.get_all_messages_by_chat_id(
         chat_id=chat_messages.chat_id
@@ -68,6 +76,8 @@ async def chat_title_generation(request: Request, chat_messages: ChatTitleGenera
         f"{sender}: {content}"
         for sender, content in all_messages_as_tuples
     ]
+
+    print(all_messages)
 
     chat_title = agents_controller.create_chat_title(
         input=ChatTitleGenerationInput(

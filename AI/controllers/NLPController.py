@@ -290,32 +290,3 @@ class NLPController(BaseController):
 
         self.logger.info("Courses indexed successfully into vector DB.")
         return True
-
-    def get_quiz_feedback(self, inputs: FeedbackInput):
-
-        if not inputs or not inputs.quiz or len(inputs.quiz) == 0:
-            return None
-
-        feedback_system_prompt = prompts.feedback_system_prompt
-
-        full_prompt = '\n'.join(
-            [
-                feedback_system_prompt,
-                "",
-                json.dumps(inputs.model_dump(), indent=4),
-                "",
-                "Please provide feedback on the quiz directly without any additional information or context.",
-                "Feedback:",
-
-            ]
-        )
-
-        feedback = self.generation_model.generate_text(
-            prompt=full_prompt,
-        )
-
-        if not feedback or len(feedback) == 0:
-            getLogger.error("Error in generating quiz feedback")
-            return None
-
-        return feedback
