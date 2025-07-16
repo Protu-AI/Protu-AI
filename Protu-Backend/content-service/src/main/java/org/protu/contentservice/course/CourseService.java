@@ -24,10 +24,10 @@ import static org.protu.contentservice.progress.ProgressRepository.CACHE_LESSONS
 @Service
 public class CourseService {
 
+  public static final String CACHE_COURSE_LESSONS_WITH_COMPLETION = "course-lessons-with-completion";
   private static final String CACHE_ALL_COURSES_LIST = "all-courses-list";
   private static final String CACHE_COURSE_DETAILS = "course-details";
   private static final String CACHE_COURSE_LESSONS = "course-lessons";
-  private static final String CACHE_COURSE_LESSONS_WITH_COMPLETION = "course-lessons-with-completion";
   private final CourseRepository courses;
   private final LessonService lessonService;
   private final AppProperties props;
