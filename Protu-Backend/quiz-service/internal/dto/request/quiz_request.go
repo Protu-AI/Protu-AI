@@ -3,7 +3,7 @@ package request
 type QuizStage1Request struct {
 	Prompt            string   `json:"prompt" binding:"required"`
 	DifficultyLevel   string   `json:"difficultyLevel" binding:"required"`
-	NumberOfQuestions int      `json:"numberOfQuestions" binding:"required"`
+	NumberOfQuestions int      `json:"numberOfQuestions" binding:"required" validate:"required,max:25"`
 	QuestionTypes     []string `json:"questionTypes" binding:"required"`
 	TimeLimit         int      `json:"timeLimit"`
 }
