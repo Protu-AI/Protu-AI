@@ -1,0 +1,197 @@
+name: protu-backend
+region: nyc1
+
+databases:
+  - name: protu-postgres
+    engine: PG
+    version: "14"
+    size: basic-xs
+    num_nodes: 1
+  - name: protu-mongodb
+    engine: MONGODB
+    version: "5"
+    size: basic-xs
+    num_nodes: 1
+  - name: protu-redis
+    engine: REDIS
+    version: "7"
+    size: basic-xs
+    num_nodes: 1
+
+services:
+  # Gateway Service (Main Entry Point)
+  - name: gateway
+    source_dir: /gateway
+    github:
+      repo: your-username/Protu-Backend
+      branch: main
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    http_port: 80
+    routes:
+      - path: /
+    env:
+      - key: EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE
+        value: http://service-discovery:8761/eureka
+    build_command: mvn clean package -DskipTests
+    run_command: java -jar target/*.jar
+
+  # Service Discovery
+  - name: service-discovery
+    source_dir: /service-discovery
+    github:
+      repo: your-username/Protu-Backend
+      branch: main
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    http_port: 8761
+    build_command: mvn clean package -DskipTests
+    run_command: java -jar target/*.jar
+
+  # User Service
+  - name: user-service
+    source_dir: /user-service
+    github:
+      repo: your-username/Protu-Backend
+      branch: main
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    http_port: 8085
+    env:
+      - key: SPRING_DATASOURCE_URL
+        value: ${protu-postgres.DATABASE_URL}
+      - key: SPRING_DATASOURCE_USERNAME
+        value: ${protu-postgres.USERNAME}
+      - key: SPRING_DATASOURCE_PASSWORD
+        value: ${protu-postgres.PASSWORD}
+      - key: SPRING_DATA_REDIS_HOST
+        value: ${protu-redis.HOSTNAME}
+      - key: SPRING_DATA_REDIS_PORT
+        value: ${protu-redis.PORT}
+      - key: JWT_SECRET
+        value: your_jwt_secret_key_32_bytes_long_12345
+      - key: JWT_ACCESS_TOKEN_TTL
+        value: "120000"
+      - key: JWT_REFRESH_TOKEN_TTL
+        value: "240000"
+      - key: ADMIN_PASSWORD
+        value: admin123secure
+      - key: CLOUDINARY_CLOUD_NAME
+        value: your_cloudinary_name
+      - key: CLOUDINARY_API_KEY
+        value: your_cloudinary_key
+      - key: CLOUDINARY_API_SECRET
+        value: your_cloudinary_secret
+    build_command: mvn clean package -DskipTests
+    run_command: java -jar target/*.jar
+
+  # Chat Service
+  - name: chat-service
+    source_dir: /chat-service
+    github:
+      repo: your-username/Protu-Backend
+      branch: main
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    http_port: 8082
+    env:
+      - key: DATABASE_URL
+        value: ${protu-postgres.DATABASE_URL}
+      - key: AI_SERVICE_URL
+        value: http://your-ai-service-url:8000
+      - key: JWT_SECRET
+        value: your_jwt_secret_key_32_bytes_long_12345
+    build_command: npm install && npx prisma generate
+    run_command: npm start
+
+  # Content Service  
+  - name: content-service
+    source_dir: /content-service
+    github:
+      repo: your-username/Protu-Backend
+      branch: main
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    http_port: 8087
+    env:
+      - key: SPRING_DATASOURCE_URL
+        value: ${protu-postgres.DATABASE_URL}
+      - key: SPRING_DATASOURCE_USERNAME
+        value: ${protu-postgres.USERNAME}
+      - key: SPRING_DATASOURCE_PASSWORD
+        value: ${protu-postgres.PASSWORD}
+      - key: SPRING_DATA_REDIS_HOST
+        value: ${protu-redis.HOSTNAME}
+      - key: SPRING_DATA_REDIS_PORT
+        value: ${protu-redis.PORT}
+      - key: JWT_SECRET
+        value: your_jwt_secret_key_32_bytes_long_12345
+      - key: CLOUDINARY_CLOUD_NAME
+        value: your_cloudinary_name
+      - key: CLOUDINARY_API_KEY
+        value: your_cloudinary_key
+      - key: CLOUDINARY_API_SECRET
+        value: your_cloudinary_secret
+    build_command: mvn clean package -DskipTests
+    run_command: java -jar target/*.jar
+
+  # Quiz Service
+  - name: quiz-service
+    source_dir: /quiz-service
+    github:
+      repo: your-username/Protu-Backend
+      branch: main
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    http_port: 8089
+    env:
+      - key: MONGO_URI
+        value: ${protu-mongodb.DATABASE_URL}
+      - key: MONGO_DB
+        value: quiz-db
+      - key: MONGO_TIMEOUT
+        value: "10"
+      - key: HTTP_SERVER_ADDRESS
+        value: ":8089"
+      - key: AI_BASE_URL
+        value: http://your-ai-service-url:8000
+      - key: JWT_SECRET
+        value: your_jwt_secret_key_32_bytes_long_12345
+    build_command: go mod tidy && go build -o quiz-service cmd/main.go
+    run_command: ./quiz-service
+
+  # Code Execution Service
+  - name: code-execution-service
+    source_dir: /code-execution-service
+    github:
+      repo: your-username/Protu-Backend
+      branch: main
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    http_port: 8086
+    env:
+      - key: RAPIDAPI_KEY
+        value: your_rapidapi_key_for_judge0
+    build_command: go mod tidy && go build -o code-execution-service main.go
+    run_command: ./code-execution-service
+
+  # Notification Service
+  - name: notification-service
+    source_dir: /notification-service
+    github:
+      repo: your-username/Protu-Backend
+      branch: main
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    http_port: 8088
+    env:
+      - key: MAIL_HOST
+        value: smtp.gmail.com
+      - key: MAIL_PORT
+        value: "587"
+      - key: MAIL_USERNAME
+        value: your_email@gmail.com
+      - key: MAIL_PASSWORD
+        value: your_app_password
+    build_command: mvn clean package -DskipTests
+    run_command: java -jar target/*.jar
