@@ -236,6 +236,9 @@ func (s *QuizService) validateQuiz(quiz *models.Quiz) error {
 	if quiz.NumberOfQuestions < 0 {
 		return errors.New("number of questions cannot be negative")
 	}
+	if quiz.NumberOfQuestions > 25 {
+		return errors.New("number of questions cannot exceed 25")
+	}
 	if quiz.TimeLimit < 0 {
 		return errors.New("time limit cannot be negative")
 	}
