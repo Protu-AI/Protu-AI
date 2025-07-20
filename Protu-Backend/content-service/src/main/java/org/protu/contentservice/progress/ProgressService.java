@@ -9,8 +9,6 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import static org.protu.contentservice.course.CourseService.CACHE_COURSE_LESSONS_WITH_COMPLETION;
-
 @Service
 public class ProgressService {
 
@@ -56,7 +54,6 @@ public class ProgressService {
     return progressRepo.markLessonUncompleted(userId, lesson.id());
   }
 
-  @CacheEvict(value = CACHE_COURSE_LESSONS_WITH_COMPLETION, key = "{#userId, #courseName}")
   public void incrementCompletedLessonsByUser(Long userId, String courseName, String lessonName) {
     userReplicaService.getUserById(userId);
     CourseDto course = courseService.getCourseByNameOrThrow(courseName);

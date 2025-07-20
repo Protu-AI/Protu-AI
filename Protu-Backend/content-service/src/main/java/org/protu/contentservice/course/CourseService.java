@@ -24,7 +24,6 @@ import static org.protu.contentservice.progress.ProgressRepository.CACHE_LESSONS
 @Service
 public class CourseService {
 
-  public static final String CACHE_COURSE_LESSONS_WITH_COMPLETION = "course-lessons-with-completion";
   private static final String CACHE_ALL_COURSES_LIST = "all-courses-list";
   private static final String CACHE_COURSE_DETAILS = "course-details";
   private static final String CACHE_COURSE_LESSONS = "course-lessons";
@@ -149,7 +148,6 @@ public class CourseService {
   }
 
   @Transactional(readOnly = true)
-  @Cacheable(value = CACHE_COURSE_LESSONS_WITH_COMPLETION, key = "{#userId, #courseName}", unless = "#result == null || #result.isEmpty()")
   public List<LessonsWithCompletion> getAllLessonsWithCompletionStatusForCourse(Long userId, String courseName) {
     CourseDto course = courses.findByNameOrThrow(courseName);
     return courses.findLessonsWithCompletionStatus(userId, course.id());
